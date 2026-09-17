@@ -1,4 +1,4 @@
-import { Download, ListFilter, Plus, Search } from 'lucide-react';
+import { Download, Info, ListFilter, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -9,6 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { EnrollmentStatus, Semester } from '@/types/enrollment';
 
 interface EnrollmentToolbarProps {
@@ -23,6 +24,8 @@ interface EnrollmentToolbarProps {
     onOpenAdvancedFilter: () => void;
     onOpenCreate: () => void;
     exportHref: string;
+    exportRowCount: number;
+    exportFiltered: boolean;
 }
 
 function toggleValue<T>(list: T[], value: T): T[] {
