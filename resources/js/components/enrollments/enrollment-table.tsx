@@ -19,7 +19,7 @@ export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, on
     return (
         <div className="min-w-0 space-y-1">
             <p className="text-muted-foreground text-xs sm:hidden">Geser tabel ke kanan untuk melihat kolom lainnya →</p>
-            <div className="overflow-x-auto rounded-lg border">
+            <div className="overflow-hidden rounded-lg border">
                 {/* w-full on the base Table shrinks/wraps cells to fit instead of overflowing on
                 narrow screens; min-w plus nowrap cells force natural width so this wrapper's
                 overflow-x-auto actually kicks in and scrolls instead of squashing columns. */}
