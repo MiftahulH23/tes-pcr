@@ -11,7 +11,7 @@ Dibangun untuk Tes Teknis Web Developer (Full Stack) Q3 2026.
 | Backend | Laravel 13 |
 | Frontend | React 19 + Inertia.js (satu aplikasi, tanpa REST API terpisah untuk navigasi halaman) |
 | UI Components | shadcn/ui (Radix UI primitives + Tailwind CSS), bawaan dari `laravel/react-starter-kit` |
-| Database | PostgreSQL (disarankan oleh spesifikasi; dipakai penuh termasuk fitur `pg_trgm` untuk pencarian cepat) |
+| Database | PostgreSQL, termasuk fitur `pg_trgm` untuk pencarian cepat |
 | Build tool | Vite |
 
 ## Struktur fitur
@@ -151,7 +151,7 @@ Lalu jalankan:
 php artisan test
 ```
 
-> Test suite yang ada saat ini adalah bawaan starter kit (autentikasi, profile settings) — belum ada test khusus fitur KRS karena fokus waktu diarahkan ke fungsionalitas dan performa di skala 5 juta baris (lihat rubrik penilaian: "Kandidat tidak perlu menulis automated test, namun nilai plus bila ada").
+> Test suite yang ada saat ini adalah bawaan starter kit (autentikasi, profile settings) — belum ada test khusus fitur KRS karena fokus waktu diarahkan ke fungsionalitas dan performa di skala 5 juta baris.
 
 ## API / Routes
 
@@ -183,7 +183,7 @@ Operator advanced filter yang didukung: `contains`, `startsWith`, `equal`, `in`,
 - **Soft delete untuk enrollments**: dipilih dibanding hard delete supaya histori KRS tidak hilang permanen (bisa dipulihkan langsung dari database bila diperlukan, misal salah hapus). Data `students`/`courses` tidak ikut ter-cascade delete ketika enrollment dihapus.
 - **Create = upsert by nim/code**: form Create selalu menerima data lengkap student+course+enrollment. Jika `nim`/`code` sudah ada di database, record yang sudah ada dipakai ulang (data yang diketik untuk field itu diabaikan); jika belum ada, dibuat baru. Ini memenuhi syarat "3 tabel terlibat dalam 1 transaksi atomic" tanpa perlu toggle UI "pilih existing vs buat baru".
 - **Update bisa sekaligus ubah data student/course**: form Update menyediakan field nama/email (student) dan nama/credits (course) sebagai opsional — kalau diisi, ikut ter-update dalam transaksi yang sama. Field identitas (`nim`, `course.code`) sengaja tidak bisa diubah dari form Update untuk menghindari perubahan identitas yang bisa merusak integritas riwayat KRS mahasiswa/mata kuliah lain yang memakai record yang sama.
-- **Advanced filter AND/OR**: diimplementasikan sebagai **satu grup kondisi** dengan satu operator logika (AND atau OR) yang berlaku untuk semua kondisi dalam grup itu — sesuai catatan di instruksi tes bahwa "advanced order AND/OR" boleh diartikan sebagai kombinasi kondisi filter (filter group), bukan pohon logika bersarang. Backend (`EnrollmentFilters::applyAdvanced`) sebenarnya reusable untuk group bersarang, tapi UI saat ini hanya mengekspos satu level karena itu yang diminta skenario tes.
+- **Advanced filter AND/OR**: diimplementasikan sebagai **satu grup kondisi** dengan satu operator logika (AND atau OR) yang berlaku untuk semua kondisi dalam grup itu, bukan pohon logika bersarang. Backend (`EnrollmentFilters::applyAdvanced`) menerima struktur yang mudah diperluas ke group bersarang di masa depan, tapi UI saat ini hanya mengekspos satu level karena itu yang paling umum dibutuhkan untuk kasus penggunaan KRS.
 - **Search & filter case-insensitive**: pencarian dan filter teks (`contains`, `startsWith`, `equal` pada kolom nama/kode) menggunakan `ILIKE` PostgreSQL. Untuk kolom enum (`status`, `semester`) yang juga dipakai untuk sorting/index, case-insensitivity dilakukan dengan menormalisasi **nilai input** ke uppercase (bukan membungkus kolom dengan `LOWER()`) — lihat [Strategi Performa](#strategi-performa) kenapa ini penting.
 
 ## Strategi Performa
@@ -209,7 +209,7 @@ Export tidak memuat seluruh dataset ke memori. `ExportEnrollmentsCsv` memakai `l
 ### Keterbatasan yang diketahui
 
 - **Sort by kolom relasi (`student_name`/`course_name`) tetap lambat (~2-2.5 detik)** karena membutuhkan JOIN sungguhan across seluruh tabel untuk `ORDER BY` — tidak bisa dihindari dengan subquery seperti filter. Solusi produksi: denormalisasi kolom tampilan (`student_name`, `course_code`) langsung ke tabel `enrollments` (di-update via trigger/event saat data terkait berubah), sehingga sort tidak perlu join sama sekali. Tidak diimplementasikan di sini karena menambah kompleksitas sinkronisasi data yang di luar scope waktu tes.
-- **Pagination `OFFSET` melambat di halaman yang sangat jauh** (halaman ~200.000 dari total ~250.000 bisa memakan ±5 detik) — karakteristik umum `LIMIT/OFFSET` di database manapun untuk dataset besar. Solusi produksi: keyset/cursor pagination (`WHERE id < id_terakhir`), namun ini mengorbankan kemampuan lompat ke nomor halaman sembarang yang diminta UI tabel data pada instruksi tes ini.
+- **Pagination `OFFSET` melambat di halaman yang sangat jauh** (halaman ~200.000 dari total ~250.000 bisa memakan ±5 detik) — karakteristik umum `LIMIT/OFFSET` di database manapun untuk dataset besar. Solusi produksi: keyset/cursor pagination (`WHERE id < id_terakhir`), namun ini mengorbankan kemampuan lompat ke nomor halaman sembarang yang disediakan UI tabel data saat ini.
 - **`php artisan serve` (dev server bawaan PHP) memproses request secara terbatas** dibanding PHP-FPM di produksi. Untuk local development yang lebih stabil saat beberapa fitur diuji bersamaan (misal export berjalan sambil create data), jalankan dengan `php artisan serve --no-reload` (mengaktifkan `PHP_CLI_SERVER_WORKERS=4` yang sudah diset di `.env`) — ini juga default yang dipakai `composer run dev`.
 
 ## Deployment
@@ -218,6 +218,6 @@ _(diisi setelah aplikasi live)_
 
 ## Catatan Stack & Asumsi
 
-- Autentikasi (login/register) tersedia dari starter kit Laravel namun **tidak digunakan** untuk fitur KRS — halaman `/enrollments` dapat diakses tanpa login, sesuai instruksi tes yang tidak menyebutkan syarat autentikasi.
-- Validasi format mengikuti spesifikasi: NIM 8-12 digit, kode MK `[A-Z]{2,4}[0-9]{3}`, tahun ajaran `YYYY/YYYY` dengan tahun kedua = tahun pertama + 1, credits 1-6, unique constraint `(student_id, course_id, academic_year, semester)`.
+- Autentikasi (login/register) tersedia dari starter kit Laravel namun **tidak digunakan** untuk fitur KRS — halaman `/enrollments` dapat diakses tanpa login.
+- Validasi format: NIM 8-12 digit, kode MK `[A-Z]{2,4}[0-9]{3}`, tahun ajaran `YYYY/YYYY` dengan tahun kedua = tahun pertama + 1, credits 1-6, unique constraint `(student_id, course_id, academic_year, semester)`.
 - Pesan validasi dan error UI dalam Bahasa Indonesia (`lang/id/validation.php`, `APP_LOCALE=id`).
