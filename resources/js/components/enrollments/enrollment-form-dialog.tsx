@@ -135,7 +135,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                 >
                     <SectionLabel>Data Mahasiswa</SectionLabel>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
                         <div className="grid gap-1.5">
                             <Label htmlFor="student_nim">NIM</Label>
                             <Input
@@ -178,7 +178,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
 
                     <SectionLabel>Data Mata Kuliah</SectionLabel>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
                         <div className="col-span-1 grid gap-1.5">
                             <Label htmlFor="course_code">Kode MK</Label>
                             <Input
@@ -222,7 +222,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
 
                     <SectionLabel>Data KRS</SectionLabel>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
                         <div className="grid gap-1.5">
                             <Label htmlFor="academic_year">Tahun Ajaran</Label>
                             <Input

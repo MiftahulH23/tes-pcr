@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { useRef } from 'react';
 import { TableHead } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import type { FilterableColumn, SortRule } from '@/types/enrollment';
@@ -10,23 +11,51 @@ interface SortableHeaderProps {
     onToggle: (field: FilterableColumn, multi: boolean) => void;
 }
 
-/** Click to sort by this column; shift-click to add it as a secondary sort key. */
+const LONG_PRESS_MS = 500;
+
+/** Click to sort by this column; shift-click (or press-and-hold on touch) to add it as a secondary sort key. */
 export function SortableHeader({ field, label, sorts, onToggle }: SortableHeaderProps) {
     const position = sorts.findIndex((s) => s.field === field);
     const active = position >= 0 ? sorts[position] : null;
+
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressFired = useRef(false);
+
+    const clearLongPress = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     return (
         <TableHead
             role="button"
             tabIndex={0}
-            className={cn('cursor-pointer select-none whitespace-nowrap', active && 'text-foreground font-semibold')}
-            onClick={(e) => onToggle(field, e.shiftKey)}
+            className={cn('cursor-pointer touch-manipulation select-none whitespace-nowrap', active && 'text-foreground font-semibold')}
+            onClick={(e) => {
+                if (longPressFired.current) {
+                    longPressFired.current = false;
+                    return;
+                }
+                onToggle(field, e.shiftKey);
+            }}
             onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     onToggle(field, e.shiftKey);
                 }
             }}
+            onTouchStart={() => {
+                longPressFired.current = false;
+                clearLongPress();
+                longPressTimer.current = setTimeout(() => {
+                    longPressFired.current = true;
+                    onToggle(field, true);
+                }, LONG_PRESS_MS);
+            }}
+            onTouchMove={clearLongPress}
+            onTouchEnd={clearLongPress}
         >
             <span className="inline-flex items-center gap-1">
                 {label}

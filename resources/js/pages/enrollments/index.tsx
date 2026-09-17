@@ -86,7 +86,9 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
                 {table.error && <p className="text-destructive text-sm">{table.error}</p>}
 
                 <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                    <span>Klik header kolom untuk sort. Shift+klik header lain untuk menambah sort multi-kolom.</span>
+                    <span>
+                        Klik header kolom untuk sort. Shift+klik header lain untuk menambah sort multi-kolom (di HP: tekan &amp; tahan header).
+                    </span>
                     {table.sorts.length > 0 && (
                         <>
                             {table.sorts.map((sort, index) => (
