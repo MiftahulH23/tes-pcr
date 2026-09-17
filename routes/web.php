@@ -4,9 +4,7 @@ use App\Http\Controllers\EnrollmentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
+Route::redirect('/', '/enrollments')->name('home');
 
 Route::get('/enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
 Route::get('/enrollments/data', [EnrollmentController::class, 'data'])->name('enrollments.data');
