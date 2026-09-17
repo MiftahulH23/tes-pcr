@@ -40,18 +40,21 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
 
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm">Gabungkan kondisi dengan:</span>
-                    {(['and', 'or'] as const).map((value) => (
-                        <Button
-                            key={value}
-                            type="button"
-                            size="sm"
-                            variant={logic === value ? 'default' : 'outline'}
-                            className={cn('uppercase')}
-                            onClick={() => onLogicChange(value)}
-                        >
-                            {value}
-                        </Button>
-                    ))}
+                    <div className="border-input inline-flex overflow-hidden rounded-md border">
+                        {(['and', 'or'] as const).map((value) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => onLogicChange(value)}
+                                className={cn(
+                                    'px-3 py-1 text-sm font-medium uppercase transition-colors',
+                                    logic === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                                )}
+                            >
+                                {value}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">

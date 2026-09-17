@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Enrollment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 class EnrollmentFilters
 {
@@ -94,11 +95,11 @@ class EnrollmentFilters
     public static function applyQuickFilters(Builder $query, array $params): Builder
     {
         if (! empty($params['status'])) {
-            $query->whereIn('enrollments.status', (array) $params['status']);
+            self::whereInCaseInsensitive($query, 'enrollments.status', (array) $params['status']);
         }
 
         if (! empty($params['semester'])) {
-            $query->whereIn('enrollments.semester', (array) $params['semester']);
+            self::whereInCaseInsensitive($query, 'enrollments.semester', (array) $params['semester']);
         }
 
         return $query;
@@ -153,17 +154,28 @@ class EnrollmentFilters
         });
     }
 
+    /**
+     * All text comparisons are case-insensitive — the seed data capitalizes
+     * names/enum values (e.g. "GANJIL", "Sari"), but a user typing "ganjil"
+     * or "sari" should still match. `between` is excluded since academic_year
+     * is numeric/slash-formatted, so case never applies to it.
+     */
     private static function applyOperator(Builder|QueryBuilder $query, string $column, string $op, mixed $value): void
     {
         match ($op) {
             'contains' => $query->where($column, 'ilike', '%'.$value.'%'),
             'startsWith' => $query->where($column, 'ilike', $value.'%'),
-            'in' => $query->whereIn($column, is_array($value) ? $value : [$value]),
+            'in' => self::whereInCaseInsensitive($query, $column, is_array($value) ? $value : [$value]),
             'between' => is_array($value) && count($value) === 2
                 ? $query->whereBetween($column, $value)
                 : null,
-            default => $query->where($column, '=', $value),
+            default => $query->where($column, 'ilike', $value),
         };
+    }
+
+    private static function whereInCaseInsensitive(Builder|QueryBuilder $query, string $column, array $values): void
+    {
+        $query->whereIn(DB::raw("LOWER({$column})"), array_map('mb_strtolower', $values));
     }
 
     public static function applySort(Builder $query, array $sorts): Builder
