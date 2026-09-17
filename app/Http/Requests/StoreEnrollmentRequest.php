@@ -41,6 +41,15 @@ class StoreEnrollmentRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'student.nim.regex' => 'NIM harus berupa 8-12 digit angka tanpa spasi.',
+            'course.code.regex' => 'Kode mata kuliah harus 2-4 huruf besar diikuti 3 angka, contoh IF101.',
+            'academic_year.regex' => 'Tahun ajaran harus berformat YYYY/YYYY, contoh 2025/2026.',
+        ];
+    }
+
     public function withValidator(ValidatorContract $validator): void
     {
         $validator->after(function (ValidatorContract $validator) {

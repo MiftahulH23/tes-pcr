@@ -37,6 +37,13 @@ class UpdateEnrollmentRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'academic_year.regex' => 'Tahun ajaran harus berformat YYYY/YYYY, contoh 2025/2026.',
+        ];
+    }
+
     public function withValidator(ValidatorContract $validator): void
     {
         $validator->after(function (ValidatorContract $validator) {

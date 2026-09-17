@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { ApiError, apiFetch } from '@/lib/api';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
+import { useEffect, useState, type ReactNode } from 'react';
 
 interface FormValues {
     student_nim: string;
@@ -18,6 +19,15 @@ interface FormValues {
     academic_year: string;
     semester: Semester | '';
     status: EnrollmentStatus | '';
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+    return (
+        <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{children}</span>
+            <Separator className="flex-1" />
+        </div>
+    );
 }
 
 const EMPTY_FORM: FormValues = {
@@ -117,12 +127,14 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                 </DialogHeader>
 
                 <form
-                    className="grid gap-4"
+                    className="grid max-h-[70vh] gap-4 overflow-y-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     onSubmit={(e) => {
                         e.preventDefault();
                         void submit();
                     }}
                 >
+                    <SectionLabel>Data Mahasiswa</SectionLabel>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="student_nim">NIM</Label>
@@ -133,7 +145,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, student_nim: e.target.value }))}
                                 placeholder="10200001"
                             />
-                            <InputError message={fieldError('student.nim')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('student.nim')} />
+                            </div>
                         </div>
                         <div className="grid gap-1.5">
                             <Label htmlFor="student_name">Nama Mahasiswa</Label>
@@ -142,7 +156,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 value={values.student_name}
                                 onChange={(e) => setValues((v) => ({ ...v, student_name: e.target.value }))}
                             />
-                            <InputError message={fieldError('student.name')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('student.name')} />
+                            </div>
                         </div>
                     </div>
 
@@ -155,8 +171,12 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             onChange={(e) => setValues((v) => ({ ...v, student_email: e.target.value }))}
                             placeholder="mahasiswa@kampus.ac.id"
                         />
-                        <InputError message={fieldError('student.email')} />
+                        <div className="min-h-5">
+                            <InputError message={fieldError('student.email')} />
+                        </div>
                     </div>
+
+                    <SectionLabel>Data Mata Kuliah</SectionLabel>
 
                     <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-1 grid gap-1.5">
@@ -168,7 +188,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, course_code: e.target.value.toUpperCase() }))}
                                 placeholder="IF101"
                             />
-                            <InputError message={fieldError('course.code')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('course.code')} />
+                            </div>
                         </div>
                         <div className="col-span-2 grid gap-1.5">
                             <Label htmlFor="course_name">Nama MK</Label>
@@ -177,7 +199,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 value={values.course_name}
                                 onChange={(e) => setValues((v) => ({ ...v, course_name: e.target.value }))}
                             />
-                            <InputError message={fieldError('course.name')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('course.name')} />
+                            </div>
                         </div>
                     </div>
 
@@ -191,8 +215,12 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             value={values.course_credits}
                             onChange={(e) => setValues((v) => ({ ...v, course_credits: e.target.value }))}
                         />
-                        <InputError message={fieldError('course.credits')} />
+                        <div className="min-h-5">
+                            <InputError message={fieldError('course.credits')} />
+                        </div>
                     </div>
+
+                    <SectionLabel>Data KRS</SectionLabel>
 
                     <div className="grid grid-cols-3 gap-4">
                         <div className="grid gap-1.5">
@@ -203,7 +231,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, academic_year: e.target.value }))}
                                 placeholder="2025/2026"
                             />
-                            <InputError message={fieldError('academic_year')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('academic_year')} />
+                            </div>
                         </div>
 
                         <div className="grid gap-1.5">
@@ -220,7 +250,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <InputError message={fieldError('semester')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('semester')} />
+                            </div>
                         </div>
 
                         <div className="grid gap-1.5">
@@ -237,7 +269,9 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <InputError message={fieldError('status')} />
+                            <div className="min-h-5">
+                                <InputError message={fieldError('status')} />
+                            </div>
                         </div>
                     </div>
 
