@@ -214,7 +214,63 @@ Export tidak memuat seluruh dataset ke memori. `ExportEnrollmentsCsv` memakai `l
 
 ## Deployment
 
-_(diisi setelah aplikasi live)_
+Aplikasi live di **https://tes.miftahulhuda.site**.
+
+### Infrastruktur
+
+| Komponen | Pilihan |
+|---|---|
+| Server | VPS (Ubuntu), path project di `/var/www/tes-pcr` |
+| Web server | Nginx (reverse proxy) + PHP-FPM (`php8.4-fpm`) |
+| Database | PostgreSQL (setup sama seperti [Setup Local](#setup-local)) |
+| SSL | Let's Encrypt (Certbot) |
+| Firewall | `ufw`, hanya port 22 (SSH), 80 (HTTP), 443 (HTTPS) yang terbuka |
+
+### CI/CD — Auto-deploy
+
+Setiap push ke branch `main` yang lolos test suite (`.github/workflows/tests.yml`) otomatis di-deploy lewat `.github/workflows/deploy.yml`:
+
+1. Workflow `deploy` menunggu workflow `tests` selesai dengan status sukses pada branch `main` (`workflow_run` trigger).
+2. GitHub Actions SSH ke VPS (pakai [appleboy/ssh-action](https://github.com/appleboy/ssh-action)) dan menjalankan:
+   ```bash
+   git pull origin main
+   composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+   npm ci
+   npm run build
+   php artisan migrate --force
+   php artisan optimize
+   sudo systemctl restart php8.4-fpm
+   ```
+
+**Secrets yang harus diisi di GitHub (Settings → Secrets and variables → Actions):**
+
+| Secret | Keterangan |
+|---|---|
+| `VPS_HOST` | IP atau hostname VPS |
+| `VPS_USERNAME` | User SSH (mis. `raul`) |
+| `VPS_SSH_KEY` | Private key SSH (format PEM) yang public key-nya sudah ada di `~/.ssh/authorized_keys` VPS |
+| `VPS_PORT` | Opsional, default `22` |
+
+**Prasyarat di VPS agar deploy tidak gagal:**
+
+- User deploy harus bisa `sudo systemctl restart php8.4-fpm` **tanpa password** (tambahkan baris berikut lewat `sudo visudo`):
+  ```
+  raul ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart php8.4-fpm
+  ```
+- File `.env` di server dikonfigurasi manual sekali (tidak ikut ter-commit/pull) dengan `APP_ENV=production`, `APP_DEBUG=false`, dan kredensial database produksi.
+- Ekstensi `pg_trgm` dan migration sudah dijalankan sekali secara manual di database produksi sebelum aktivasi CI/CD pertama kali.
+
+### Firewall
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+sudo ufw status
+```
+
+PostgreSQL tidak dibuka ke publik — hanya diakses via `localhost` oleh aplikasi di server yang sama.
 
 ## Catatan Stack & Asumsi
 
