@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\Enrollment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Facades\DB;
 
 class EnrollmentFilters
 {
@@ -20,13 +19,13 @@ class EnrollmentFilters
      * tables can't be expressed as a subquery.
      */
     public const COLUMNS = [
-        'student_nim' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'nim', 'joined' => 'students.nim'],
-        'student_name' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'name', 'joined' => 'students.name'],
-        'course_code' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'code', 'joined' => 'courses.code'],
-        'course_name' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'name', 'joined' => 'courses.name'],
-        'semester' => ['own' => true, 'joined' => 'enrollments.semester'],
-        'academic_year' => ['own' => true, 'joined' => 'enrollments.academic_year'],
-        'status' => ['own' => true, 'joined' => 'enrollments.status'],
+        'student_nim' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'nim', 'joined' => 'students.nim', 'enum' => false],
+        'student_name' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'name', 'joined' => 'students.name', 'enum' => false],
+        'course_code' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'code', 'joined' => 'courses.code', 'enum' => false],
+        'course_name' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'name', 'joined' => 'courses.name', 'enum' => false],
+        'semester' => ['own' => true, 'joined' => 'enrollments.semester', 'enum' => true],
+        'academic_year' => ['own' => true, 'joined' => 'enrollments.academic_year', 'enum' => false],
+        'status' => ['own' => true, 'joined' => 'enrollments.status', 'enum' => true],
     ];
 
     public static function baseQuery(bool $withJoin = true): Builder
@@ -95,11 +94,11 @@ class EnrollmentFilters
     public static function applyQuickFilters(Builder $query, array $params): Builder
     {
         if (! empty($params['status'])) {
-            self::whereInCaseInsensitive($query, 'enrollments.status', (array) $params['status']);
+            $query->whereIn('enrollments.status', self::toEnumCase((array) $params['status']));
         }
 
         if (! empty($params['semester'])) {
-            self::whereInCaseInsensitive($query, 'enrollments.semester', (array) $params['semester']);
+            $query->whereIn('enrollments.semester', self::toEnumCase((array) $params['semester']));
         }
 
         return $query;
@@ -140,7 +139,7 @@ class EnrollmentFilters
         $meta = self::COLUMNS[$field];
 
         if ($meta['own']) {
-            self::applyOperator($query, $meta['joined'], $op, $value);
+            self::applyOperator($query, $meta['joined'], $op, $value, $meta['enum']);
 
             return;
         }
@@ -150,22 +149,40 @@ class EnrollmentFilters
         // of forcing a join + per-row filter across all of `enrollments`.
         $query->whereIn("enrollments.{$meta['fk']}", function ($sub) use ($meta, $op, $value) {
             $sub->select('id')->from($meta['table']);
-            self::applyOperator($sub, $meta['column'], $op, $value);
+            self::applyOperator($sub, $meta['column'], $op, $value, $meta['enum']);
         });
     }
 
     /**
-     * All text comparisons are case-insensitive — the seed data capitalizes
-     * names/enum values (e.g. "GANJIL", "Sari"), but a user typing "ganjil"
-     * or "sari" should still match. `between` is excluded since academic_year
-     * is numeric/slash-formatted, so case never applies to it.
+     * Case-insensitive everywhere a user can type free text, without ever
+     * wrapping an indexed column in LOWER()/a function — doing that on
+     * `enrollments.status` (also used for ORDER BY and already B-tree
+     * indexed) made Postgres misjudge selectivity so badly it picked a
+     * nested-loop plan that took ~10s instead of ~800ms. `semester`/`status`
+     * are a fixed enum written in uppercase by validation, so normalizing
+     * the *value* to match is lossless and keeps a plain, indexable
+     * equality/IN. Free-text columns (names, nim, code) use ILIKE instead,
+     * which the trigram indexes already handle well.
      */
-    private static function applyOperator(Builder|QueryBuilder $query, string $column, string $op, mixed $value): void
+    private static function applyOperator(Builder|QueryBuilder $query, string $column, string $op, mixed $value, bool $enum = false): void
     {
+        if ($enum) {
+            match ($op) {
+                'in' => $query->whereIn($column, self::toEnumCase(is_array($value) ? $value : [$value])),
+                default => $query->where($column, '=', self::toEnumCase([$value])[0]),
+            };
+
+            return;
+        }
+
         match ($op) {
             'contains' => $query->where($column, 'ilike', '%'.$value.'%'),
             'startsWith' => $query->where($column, 'ilike', $value.'%'),
-            'in' => self::whereInCaseInsensitive($query, $column, is_array($value) ? $value : [$value]),
+            'in' => $query->where(function (Builder|QueryBuilder $q) use ($column, $value) {
+                foreach ((array) $value as $v) {
+                    $q->orWhere($column, 'ilike', $v);
+                }
+            }),
             'between' => is_array($value) && count($value) === 2
                 ? $query->whereBetween($column, $value)
                 : null,
@@ -173,9 +190,10 @@ class EnrollmentFilters
         };
     }
 
-    private static function whereInCaseInsensitive(Builder|QueryBuilder $query, string $column, array $values): void
+    /** @return list<string> */
+    private static function toEnumCase(array $values): array
     {
-        $query->whereIn(DB::raw("LOWER({$column})"), array_map('mb_strtolower', $values));
+        return array_map(fn ($v) => mb_strtoupper((string) $v), $values);
     }
 
     public static function applySort(Builder $query, array $sorts): Builder
