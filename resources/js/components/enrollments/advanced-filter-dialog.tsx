@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ENROLLMENT_COLUMNS, OPERATORS_BY_COLUMN } from '@/components/enrollments/columns';
+import { ENROLLMENT_COLUMNS, OPERATORS_BY_COLUMN, valuePlaceholder } from '@/components/enrollments/columns';
 import { cn } from '@/lib/utils';
 import type { FilterCondition, FilterLogic, FilterableColumn } from '@/types/enrollment';
 
@@ -62,10 +62,10 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
                             <Select
                                 value={condition.field}
                                 onValueChange={(field: FilterableColumn) =>
-                                    updateCondition(condition.id, { field, op: OPERATORS_BY_COLUMN[field][0].value, value: '' })
+                                    updateCondition(condition.id, { field, op: OPERATORS_BY_COLUMN[field][0].value })
                                 }
                             >
-                                <SelectTrigger className="w-40">
+                                <SelectTrigger className="w-40 shrink-0">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -78,7 +78,7 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
                             </Select>
 
                             <Select value={condition.op} onValueChange={(op) => updateCondition(condition.id, { op: op as FilterCondition['op'] })}>
-                                <SelectTrigger className="w-56">
+                                <SelectTrigger className="w-40 shrink-0">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -93,8 +93,8 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
                             <Input
                                 value={condition.value}
                                 onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
-                                placeholder="Nilai..."
-                                className="flex-1"
+                                placeholder={valuePlaceholder(condition.op)}
+                                className="min-w-0 flex-1"
                             />
 
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeCondition(condition.id)}>

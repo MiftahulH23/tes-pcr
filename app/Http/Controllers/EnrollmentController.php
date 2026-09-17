@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Enrollments\CreateEnrollment;
+use App\Actions\Enrollments\ExportEnrollmentsCsv;
 use App\Actions\Enrollments\UpdateEnrollment;
 use App\Http\Requests\StoreEnrollmentRequest;
 use App\Http\Requests\UpdateEnrollmentRequest;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EnrollmentController extends Controller
 {
@@ -75,5 +77,10 @@ class EnrollmentController extends Controller
         $enrollment->delete();
 
         return response()->json(['message' => 'KRS berhasil dihapus.'], 200);
+    }
+
+    public function export(Request $request, ExportEnrollmentsCsv $action): StreamedResponse
+    {
+        return $action->handle($request->all());
     }
 }

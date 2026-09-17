@@ -1,4 +1,4 @@
-import { ListFilter, Plus, Search } from 'lucide-react';
+import { Download, ListFilter, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -22,6 +22,7 @@ interface EnrollmentToolbarProps {
     onQuickSemesterChange: (semesters: Semester[]) => void;
     onOpenAdvancedFilter: () => void;
     onOpenCreate: () => void;
+    exportHref: string;
 }
 
 function toggleValue<T>(list: T[], value: T): T[] {
@@ -39,6 +40,7 @@ export function EnrollmentToolbar({
     onQuickSemesterChange,
     onOpenAdvancedFilter,
     onOpenCreate,
+    exportHref,
 }: EnrollmentToolbarProps) {
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -103,10 +105,18 @@ export function EnrollmentToolbar({
                 </Button>
             </div>
 
-            <Button size="sm" onClick={onOpenCreate}>
-                <Plus className="size-4" />
-                Tambah KRS
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                    <a href={exportHref}>
+                        <Download className="size-4" />
+                        Export CSV
+                    </a>
+                </Button>
+                <Button size="sm" onClick={onOpenCreate}>
+                    <Plus className="size-4" />
+                    Tambah KRS
+                </Button>
+            </div>
         </div>
     );
 }

@@ -83,10 +83,10 @@ class EnrollmentFilters
         return $query->where(function (Builder $q) use ($term) {
             $q->whereIn('enrollments.student_id', function ($sub) use ($term) {
                 $sub->select('id')->from('students')
-                    ->where('nim', 'like', "%{$term}%")
-                    ->orWhere('name', 'like', "%{$term}%");
+                    ->where('nim', 'ilike', "%{$term}%")
+                    ->orWhere('name', 'ilike', "%{$term}%");
             })->orWhereIn('enrollments.course_id', function ($sub) use ($term) {
-                $sub->select('id')->from('courses')->where('code', 'like', "%{$term}%");
+                $sub->select('id')->from('courses')->where('code', 'ilike', "%{$term}%");
             });
         });
     }
@@ -156,8 +156,8 @@ class EnrollmentFilters
     private static function applyOperator(Builder|QueryBuilder $query, string $column, string $op, mixed $value): void
     {
         match ($op) {
-            'contains' => $query->where($column, 'like', '%'.$value.'%'),
-            'startsWith' => $query->where($column, 'like', $value.'%'),
+            'contains' => $query->where($column, 'ilike', '%'.$value.'%'),
+            'startsWith' => $query->where($column, 'ilike', $value.'%'),
             'in' => $query->whereIn($column, is_array($value) ? $value : [$value]),
             'between' => is_array($value) && count($value) === 2
                 ? $query->whereBetween($column, $value)

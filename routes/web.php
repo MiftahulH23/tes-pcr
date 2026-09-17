@@ -10,6 +10,7 @@ Route::get('/', function () {
 
 Route::get('/enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
 Route::get('/enrollments/data', [EnrollmentController::class, 'data'])->name('enrollments.data');
+Route::get('/enrollments/export', [EnrollmentController::class, 'export'])->name('enrollments.export');
 Route::post('/enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
 Route::put('/enrollments/{enrollment}', [EnrollmentController::class, 'update'])->name('enrollments.update');
 Route::delete('/enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->name('enrollments.destroy');

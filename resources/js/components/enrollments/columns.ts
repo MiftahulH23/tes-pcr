@@ -41,14 +41,25 @@ export const OPERATORS_BY_COLUMN: Record<FilterableColumn, { value: FilterOperat
     ],
     semester: [
         { value: 'equal', label: 'Sama dengan' },
-        { value: 'in', label: 'Salah satu dari (pisahkan koma)' },
+        { value: 'in', label: 'Salah satu dari' },
     ],
     academic_year: [
         { value: 'equal', label: 'Sama dengan' },
-        { value: 'between', label: 'Antara (contoh: 2023/2024,2025/2026)' },
+        { value: 'between', label: 'Antara' },
     ],
     status: [
         { value: 'equal', label: 'Sama dengan' },
-        { value: 'in', label: 'Salah satu dari (pisahkan koma)' },
+        { value: 'in', label: 'Salah satu dari' },
     ],
 };
+
+/** Placeholder shown in the value input, guiding the expected format per operator. */
+export function valuePlaceholder(op: FilterOperator): string {
+    return {
+        contains: 'Nilai...',
+        startsWith: 'Nilai...',
+        equal: 'Nilai...',
+        in: 'Pisahkan dengan koma, mis. DRAFT,APPROVED',
+        between: 'mis. 2023/2024,2025/2026',
+    }[op];
+}

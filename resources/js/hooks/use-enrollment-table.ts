@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import type { Enrollment, EnrollmentStatus, FilterCondition, FilterLogic, FilterableColumn, PageMeta, Semester, SortRule } from '@/types/enrollment';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface EnrollmentApiResponse {
     data: Enrollment[];
@@ -34,10 +34,10 @@ export function useEnrollmentTable() {
         setPage(1);
     }, [debouncedSearch, quickStatus, quickSemester, sorts, advancedLogic, advancedConditions]);
 
-    const queryString = useMemo(() => {
+    // Search/quick-filter/advanced-filter params shared by both the table
+    // fetch and the CSV export link (export ignores page/page_size/sort).
+    const filterParams = useMemo(() => {
         const params = new URLSearchParams();
-        params.set('page', String(page));
-        params.set('page_size', String(pageSize));
 
         if (debouncedSearch) {
             params.set('q', debouncedSearch);
@@ -45,10 +45,6 @@ export function useEnrollmentTable() {
 
         quickStatus.forEach((status) => params.append('status[]', status));
         quickSemester.forEach((semester) => params.append('semester[]', semester));
-
-        if (sorts.length > 0) {
-            params.set('sort', JSON.stringify(sorts));
-        }
 
         const activeConditions = advancedConditions.filter((c) => c.value.trim() !== '');
         if (activeConditions.length > 0) {
@@ -65,11 +61,31 @@ export function useEnrollmentTable() {
             );
         }
 
+        return params;
+    }, [debouncedSearch, quickStatus, quickSemester, advancedLogic, advancedConditions]);
+
+    const queryString = useMemo(() => {
+        const params = new URLSearchParams(filterParams);
+        params.set('page', String(page));
+        params.set('page_size', String(pageSize));
+
+        if (sorts.length > 0) {
+            params.set('sort', JSON.stringify(sorts));
+        }
+
         return params.toString();
-    }, [page, pageSize, debouncedSearch, quickStatus, quickSemester, sorts, advancedLogic, advancedConditions]);
+    }, [filterParams, page, pageSize, sorts]);
+
+    const exportQueryString = filterParams.toString();
 
     useEffect(() => {
         const controller = new AbortController();
+        // AbortController alone isn't enough: if an older request's response
+        // already arrived before this effect re-ran, aborting it here does
+        // nothing, and its .then() can still resolve after a newer request's
+        // and overwrite the table with stale data. This flag guards against
+        // that out-of-order-response race regardless of arrival order.
+        let cancelled = false;
 
         setLoading(true);
         setError(null);
@@ -86,19 +102,30 @@ export function useEnrollmentTable() {
                 return response.json() as Promise<EnrollmentApiResponse>;
             })
             .then((json) => {
+                if (cancelled) {
+                    return;
+                }
+
                 setRows(json.data);
                 setMeta(json.meta);
             })
             .catch((err: unknown) => {
-                if (err instanceof DOMException && err.name === 'AbortError') {
+                if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) {
                     return;
                 }
 
                 setError(err instanceof Error ? err.message : 'Gagal memuat data.');
             })
-            .finally(() => setLoading(false));
+            .finally(() => {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            });
 
-        return () => controller.abort();
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
     }, [queryString, refreshToken]);
 
     const toggleSort = useCallback((field: FilterableColumn, multi: boolean) => {
@@ -128,8 +155,10 @@ export function useEnrollmentTable() {
         loading,
         error,
         queryString,
+        exportQueryString,
 
         // setters / actions
+        setSorts,
         setPage,
         setPageSize,
         setSearch,

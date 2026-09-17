@@ -1,15 +1,17 @@
-import { Head } from '@inertiajs/react';
-import { useState } from 'react';
 import { AdvancedFilterDialog } from '@/components/enrollments/advanced-filter-dialog';
+import { ENROLLMENT_COLUMNS } from '@/components/enrollments/columns';
 import { EnrollmentFormDialog } from '@/components/enrollments/enrollment-form-dialog';
 import { EnrollmentPagination } from '@/components/enrollments/enrollment-pagination';
 import { EnrollmentTable } from '@/components/enrollments/enrollment-table';
 import { EnrollmentToolbar } from '@/components/enrollments/enrollment-toolbar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useEnrollmentTable } from '@/hooks/use-enrollment-table';
 import { apiFetch } from '@/lib/api';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
+import { Head } from '@inertiajs/react';
+import { useState } from 'react';
 
 interface EnrollmentsPageProps {
     statuses: EnrollmentStatus[];
@@ -72,9 +74,26 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
                     onQuickSemesterChange={table.setQuickSemester}
                     onOpenAdvancedFilter={() => setAdvancedFilterOpen(true)}
                     onOpenCreate={openCreate}
+                    exportHref={`${route('enrollments.export')}?${table.exportQueryString}`}
                 />
 
                 {table.error && <p className="text-destructive text-sm">{table.error}</p>}
+
+                <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+                    <span>Klik header kolom untuk sort. Shift+klik header lain untuk menambah sort multi-kolom.</span>
+                    {table.sorts.length > 0 && (
+                        <>
+                            {table.sorts.map((sort, index) => (
+                                <Badge key={sort.field} variant="secondary">
+                                    {index + 1}. {ENROLLMENT_COLUMNS.find((c) => c.key === sort.field)?.label} ({sort.dir})
+                                </Badge>
+                            ))}
+                            <button type="button" className="underline" onClick={() => table.setSorts([])}>
+                                Bersihkan sort
+                            </button>
+                        </>
+                    )}
+                </div>
 
                 <EnrollmentTable
                     rows={table.rows}
