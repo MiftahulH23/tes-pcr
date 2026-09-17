@@ -111,19 +111,16 @@ export function EnrollmentToolbar({
             </div>
 
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                    <a href={exportHref}>
-                        <Download className="size-4" />
-                        Export CSV
-                    </a>
-                </Button>
-
                 <TooltipProvider delayDuration={200}>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Info export">
-                                <Info className="size-4" />
-                            </button>
+                            <Button variant="outline" size="sm" asChild>
+                                <a href={exportHref}>
+                                    <Download className="size-4" />
+                                    Export CSV
+                                    <Info className="text-muted-foreground size-3.5" />
+                                </a>
+                            </Button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-64 text-center">
                             {exportFiltered ? (
@@ -138,7 +135,7 @@ export function EnrollmentToolbar({
                                     <span className="font-medium">{exportRowCount.toLocaleString('id-ID')} baris</span>.
                                 </p>
                             )}
-                            <p className="text-muted-foreground mt-1">Untuk data besar, proses ini bisa memakan waktu beberapa menit.</p>
+                            <p className="text-muted-foreground mt-1">Untuk data besar, proses ini bisa memakan beberapa waktu.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
