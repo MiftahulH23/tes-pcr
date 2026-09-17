@@ -110,11 +110,11 @@ export function EnrollmentToolbar({
                 </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                 <TooltipProvider delayDuration={200}>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" asChild>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
                                 <a href={exportHref}>
                                     <Download className="size-4" />
                                     Export CSV
@@ -140,7 +140,7 @@ export function EnrollmentToolbar({
                     </Tooltip>
                 </TooltipProvider>
 
-                <Button size="sm" onClick={onOpenCreate}>
+                <Button size="sm" className="w-full sm:w-auto" onClick={onOpenCreate}>
                     <Plus className="size-4" />
                     Tambah KRS
                 </Button>

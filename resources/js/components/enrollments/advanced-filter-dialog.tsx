@@ -61,48 +61,55 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
                     {conditions.length === 0 && <p className="text-muted-foreground py-4 text-center text-sm">Belum ada kondisi filter.</p>}
 
                     {conditions.map((condition) => (
-                        <div key={condition.id} className="flex items-center gap-2">
-                            <Select
-                                value={condition.field}
-                                onValueChange={(field: FilterableColumn) =>
-                                    updateCondition(condition.id, { field, op: OPERATORS_BY_COLUMN[field][0].value })
-                                }
-                            >
-                                <SelectTrigger className="w-40 shrink-0">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ENROLLMENT_COLUMNS.map((column) => (
-                                        <SelectItem key={column.key} value={column.key}>
-                                            {column.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div key={condition.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <div className="flex gap-2">
+                                <Select
+                                    value={condition.field}
+                                    onValueChange={(field: FilterableColumn) =>
+                                        updateCondition(condition.id, { field, op: OPERATORS_BY_COLUMN[field][0].value })
+                                    }
+                                >
+                                    <SelectTrigger className="w-full sm:w-40 sm:shrink-0">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ENROLLMENT_COLUMNS.map((column) => (
+                                            <SelectItem key={column.key} value={column.key}>
+                                                {column.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
-                            <Select value={condition.op} onValueChange={(op) => updateCondition(condition.id, { op: op as FilterCondition['op'] })}>
-                                <SelectTrigger className="w-40 shrink-0">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {OPERATORS_BY_COLUMN[condition.field].map((operator) => (
-                                        <SelectItem key={operator.value} value={operator.value}>
-                                            {operator.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                <Select
+                                    value={condition.op}
+                                    onValueChange={(op) => updateCondition(condition.id, { op: op as FilterCondition['op'] })}
+                                >
+                                    <SelectTrigger className="w-full sm:w-40 sm:shrink-0">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {OPERATORS_BY_COLUMN[condition.field].map((operator) => (
+                                            <SelectItem key={operator.value} value={operator.value}>
+                                                {operator.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                            <Input
-                                value={condition.value}
-                                onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
-                                placeholder={valuePlaceholder(condition.op)}
-                                className="min-w-0 flex-1 focus-visible:ring-0"
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    value={condition.value}
+                                    onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                                    placeholder={valuePlaceholder(condition.op)}
+                                    className="min-w-0 flex-1 focus-visible:outline-0"
+                                />
 
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeCondition(condition.id)}>
-                                <X className="size-4" />
-                            </Button>
+                                <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removeCondition(condition.id)}>
+                                    <X className="size-4" />
+                                </Button>
+                            </div>
                         </div>
                     ))}
                 </div>

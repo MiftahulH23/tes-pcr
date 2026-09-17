@@ -121,13 +121,13 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="gap-3 sm:max-w-xl" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Ubah KRS' : 'Tambah KRS'}</DialogTitle>
                 </DialogHeader>
 
                 <form
-                    className="grid max-h-[70vh] gap-4 overflow-y-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="grid max-h-[70vh] gap-3 overflow-y-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     onSubmit={(e) => {
                         e.preventDefault();
                         void submit();
@@ -135,7 +135,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                 >
                     <SectionLabel>Data Mahasiswa</SectionLabel>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="grid gap-1.5">
                             <Label htmlFor="student_nim">NIM</Label>
                             <Input
@@ -145,7 +145,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, student_nim: e.target.value }))}
                                 placeholder="10200001"
                             />
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('student.nim')} />
                             </div>
                         </div>
@@ -156,7 +156,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 value={values.student_name}
                                 onChange={(e) => setValues((v) => ({ ...v, student_name: e.target.value }))}
                             />
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('student.name')} />
                             </div>
                         </div>
@@ -171,14 +171,14 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             onChange={(e) => setValues((v) => ({ ...v, student_email: e.target.value }))}
                             placeholder="mahasiswa@kampus.ac.id"
                         />
-                        <div className="min-h-5">
+                        <div className="min-h-4">
                             <InputError message={fieldError('student.email')} />
                         </div>
                     </div>
 
                     <SectionLabel>Data Mata Kuliah</SectionLabel>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div className="col-span-1 grid gap-1.5">
                             <Label htmlFor="course_code">Kode MK</Label>
                             <Input
@@ -188,7 +188,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, course_code: e.target.value.toUpperCase() }))}
                                 placeholder="IF101"
                             />
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('course.code')} />
                             </div>
                         </div>
@@ -199,7 +199,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 value={values.course_name}
                                 onChange={(e) => setValues((v) => ({ ...v, course_name: e.target.value }))}
                             />
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('course.name')} />
                             </div>
                         </div>
@@ -215,14 +215,14 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             value={values.course_credits}
                             onChange={(e) => setValues((v) => ({ ...v, course_credits: e.target.value }))}
                         />
-                        <div className="min-h-5">
+                        <div className="min-h-4">
                             <InputError message={fieldError('course.credits')} />
                         </div>
                     </div>
 
                     <SectionLabel>Data KRS</SectionLabel>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div className="grid gap-1.5">
                             <Label htmlFor="academic_year">Tahun Ajaran</Label>
                             <Input
@@ -231,7 +231,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 onChange={(e) => setValues((v) => ({ ...v, academic_year: e.target.value }))}
                                 placeholder="2025/2026"
                             />
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('academic_year')} />
                             </div>
                         </div>
@@ -250,7 +250,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('semester')} />
                             </div>
                         </div>
@@ -269,7 +269,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="min-h-5">
+                            <div className="min-h-4">
                                 <InputError message={fieldError('status')} />
                             </div>
                         </div>
