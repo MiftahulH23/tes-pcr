@@ -44,6 +44,8 @@ export function EnrollmentToolbar({
     onOpenAdvancedFilter,
     onOpenCreate,
     exportHref,
+    exportRowCount,
+    exportFiltered,
 }: EnrollmentToolbarProps) {
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -108,13 +110,39 @@ export function EnrollmentToolbar({
                 </Button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" asChild>
                     <a href={exportHref}>
                         <Download className="size-4" />
                         Export CSV
                     </a>
                 </Button>
+
+                <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Info export">
+                                <Info className="size-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-64 text-center">
+                            {exportFiltered ? (
+                                <p>
+                                    Export mengikuti pencarian/filter yang aktif — akan menghasilkan{' '}
+                                    <span className="font-medium">{exportRowCount.toLocaleString('id-ID')} baris</span>. Kosongkan semua
+                                    filter untuk export seluruh data.
+                                </p>
+                            ) : (
+                                <p>
+                                    Tidak ada filter aktif — export akan menghasilkan seluruh{' '}
+                                    <span className="font-medium">{exportRowCount.toLocaleString('id-ID')} baris</span>.
+                                </p>
+                            )}
+                            <p className="text-muted-foreground mt-1">Untuk data besar, proses ini bisa memakan waktu beberapa menit.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+
                 <Button size="sm" onClick={onOpenCreate}>
                     <Plus className="size-4" />
                     Tambah KRS

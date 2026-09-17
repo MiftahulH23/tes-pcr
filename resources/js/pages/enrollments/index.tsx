@@ -75,6 +75,8 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
                     onOpenAdvancedFilter={() => setAdvancedFilterOpen(true)}
                     onOpenCreate={openCreate}
                     exportHref={`${route('enrollments.export')}?${table.exportQueryString}`}
+                    exportRowCount={table.meta.total}
+                    exportFiltered={table.exportQueryString.length > 0}
                 />
 
                 {table.error && <p className="text-destructive text-sm">{table.error}</p>}
