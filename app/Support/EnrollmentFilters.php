@@ -4,41 +4,76 @@ namespace App\Support;
 
 use App\Models\Enrollment;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class EnrollmentFilters
 {
     /**
-     * Whitelist of filterable/sortable columns exposed to the client,
-     * mapped to their qualified SQL column to prevent arbitrary column injection.
+     * Whitelist of filterable/sortable columns exposed to the client. Columns
+     * reached through the students/courses join carry the related table's FK
+     * column on `enrollments` plus the target table/column, so search and
+     * advanced filters can reach them via a `whereIn` subquery instead of an
+     * actual join — that lets Postgres use the students/courses trigram
+     * indexes directly instead of a per-row nested loop (see README:
+     * performance). Sorting still needs the real join since ORDER BY across
+     * tables can't be expressed as a subquery.
      */
     public const COLUMNS = [
-        'student_nim' => 'students.nim',
-        'student_name' => 'students.name',
-        'course_code' => 'courses.code',
-        'course_name' => 'courses.name',
-        'semester' => 'enrollments.semester',
-        'academic_year' => 'enrollments.academic_year',
-        'status' => 'enrollments.status',
+        'student_nim' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'nim', 'joined' => 'students.nim'],
+        'student_name' => ['own' => false, 'fk' => 'student_id', 'table' => 'students', 'column' => 'name', 'joined' => 'students.name'],
+        'course_code' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'code', 'joined' => 'courses.code'],
+        'course_name' => ['own' => false, 'fk' => 'course_id', 'table' => 'courses', 'column' => 'name', 'joined' => 'courses.name'],
+        'semester' => ['own' => true, 'joined' => 'enrollments.semester'],
+        'academic_year' => ['own' => true, 'joined' => 'enrollments.academic_year'],
+        'status' => ['own' => true, 'joined' => 'enrollments.status'],
     ];
 
-    public static function baseQuery(): Builder
+    public static function baseQuery(bool $withJoin = true): Builder
     {
-        return Enrollment::query()
-            ->join('students', 'students.id', '=', 'enrollments.student_id')
-            ->join('courses', 'courses.id', '=', 'enrollments.course_id')
-            ->select([
-                'enrollments.id',
-                'students.nim as student_nim',
-                'students.name as student_name',
-                'courses.code as course_code',
-                'courses.name as course_name',
-                'enrollments.semester',
-                'enrollments.academic_year',
-                'enrollments.status',
-                'enrollments.created_at',
-            ]);
+        $query = Enrollment::query();
+
+        if ($withJoin) {
+            $query->join('students', 'students.id', '=', 'enrollments.student_id')
+                ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                ->select([
+                    'enrollments.id',
+                    'students.nim as student_nim',
+                    'students.name as student_name',
+                    'courses.code as course_code',
+                    'courses.name as course_name',
+                    'enrollments.semester',
+                    'enrollments.academic_year',
+                    'enrollments.status',
+                    'enrollments.created_at',
+                ]);
+        }
+
+        return $query;
     }
 
+    /** Only sorting by a joined column forces a real join — search/filters use subqueries instead. */
+    public static function needsJoin(array $params): bool
+    {
+        foreach (self::decode($params['sort'] ?? null) ?? [] as $sort) {
+            $field = $sort['field'] ?? null;
+            if (isset(self::COLUMNS[$field]) && ! self::COLUMNS[$field]['own']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function decode(mixed $value): ?array
+    {
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+
+        return is_array($value) ? $value : null;
+    }
+
+    /** Live search across the 3 required columns (NIM, student name, course code) via indexed subqueries. */
     public static function applySearch(Builder $query, ?string $term): Builder
     {
         if (! $term) {
@@ -46,9 +81,13 @@ class EnrollmentFilters
         }
 
         return $query->where(function (Builder $q) use ($term) {
-            $q->where('students.nim', 'like', "%{$term}%")
-                ->orWhere('students.name', 'like', "%{$term}%")
-                ->orWhere('courses.code', 'like', "%{$term}%");
+            $q->whereIn('enrollments.student_id', function ($sub) use ($term) {
+                $sub->select('id')->from('students')
+                    ->where('nim', 'like', "%{$term}%")
+                    ->orWhere('name', 'like', "%{$term}%");
+            })->orWhereIn('enrollments.course_id', function ($sub) use ($term) {
+                $sub->select('id')->from('courses')->where('code', 'like', "%{$term}%");
+            });
         });
     }
 
@@ -65,34 +104,26 @@ class EnrollmentFilters
         return $query;
     }
 
+    /**
+     * Applies one filter group: a list of column conditions combined with a
+     * single AND/OR logic operator, per the "advanced order AND/OR" scenario
+     * (interpreted as a combined filter group, as the spec allows).
+     */
     public static function applyAdvanced(Builder $query, ?array $group): Builder
     {
-        if (! $group || (empty($group['conditions']) && empty($group['groups']))) {
+        if (! $group || empty($group['conditions'])) {
             return $query;
         }
 
-        $query->where(function (Builder $q) use ($group) {
-            self::applyGroup($q, $group);
+        $logic = strtolower($group['logic'] ?? 'and') === 'or' ? 'orWhere' : 'where';
+
+        $query->where(function (Builder $q) use ($group, $logic) {
+            foreach ($group['conditions'] as $condition) {
+                $q->{$logic}(fn (Builder $inner) => self::applyCondition($inner, $condition));
+            }
         });
 
         return $query;
-    }
-
-    protected static function applyGroup(Builder $query, array $group): void
-    {
-        $logic = strtolower($group['logic'] ?? 'and') === 'or' ? 'orWhere' : 'where';
-
-        foreach ($group['conditions'] ?? [] as $condition) {
-            $query->{$logic}(function (Builder $q) use ($condition) {
-                self::applyCondition($q, $condition);
-            });
-        }
-
-        foreach ($group['groups'] ?? [] as $sub) {
-            $query->{$logic}(function (Builder $q) use ($sub) {
-                self::applyGroup($q, $sub);
-            });
-        }
     }
 
     protected static function applyCondition(Builder $query, array $condition): void
@@ -105,8 +136,25 @@ class EnrollmentFilters
             return;
         }
 
-        $column = self::COLUMNS[$field];
+        $meta = self::COLUMNS[$field];
 
+        if ($meta['own']) {
+            self::applyOperator($query, $meta['joined'], $op, $value);
+
+            return;
+        }
+
+        // Joined column: filter via a subquery on the related table so the
+        // trigram/B-tree index on that table can be used directly, instead
+        // of forcing a join + per-row filter across all of `enrollments`.
+        $query->whereIn("enrollments.{$meta['fk']}", function ($sub) use ($meta, $op, $value) {
+            $sub->select('id')->from($meta['table']);
+            self::applyOperator($sub, $meta['column'], $op, $value);
+        });
+    }
+
+    private static function applyOperator(Builder|QueryBuilder $query, string $column, string $op, mixed $value): void
+    {
         match ($op) {
             'contains' => $query->where($column, 'like', '%'.$value.'%'),
             'startsWith' => $query->where($column, 'like', $value.'%'),
@@ -127,7 +175,7 @@ class EnrollmentFilters
             $dir = strtolower($sort['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
 
             if (isset(self::COLUMNS[$field])) {
-                $query->orderBy(self::COLUMNS[$field], $dir);
+                $query->orderBy(self::COLUMNS[$field]['joined'], $dir);
                 $applied = true;
             }
         }
@@ -139,24 +187,14 @@ class EnrollmentFilters
         return $query;
     }
 
-    public static function fromRequest(array $params): Builder
+    public static function fromRequest(array $params, bool $withJoin = true): Builder
     {
-        $query = self::baseQuery();
+        $query = self::baseQuery($withJoin);
 
         self::applySearch($query, $params['q'] ?? null);
         self::applyQuickFilters($query, $params);
-
-        $advanced = $params['filters'] ?? null;
-        if (is_string($advanced)) {
-            $advanced = json_decode($advanced, true);
-        }
-        self::applyAdvanced($query, is_array($advanced) ? $advanced : null);
-
-        $sort = $params['sort'] ?? null;
-        if (is_string($sort)) {
-            $sort = json_decode($sort, true);
-        }
-        self::applySort($query, is_array($sort) ? $sort : []);
+        self::applyAdvanced($query, self::decode($params['filters'] ?? null));
+        self::applySort($query, self::decode($params['sort'] ?? null) ?? []);
 
         return $query;
     }

@@ -9,7 +9,7 @@ use App\Http\Requests\UpdateEnrollmentRequest;
 use App\Http\Resources\EnrollmentResource;
 use App\Models\Enrollment;
 use App\Support\EnrollmentFilters;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
@@ -29,10 +29,16 @@ class EnrollmentController extends Controller
     {
         $page = max((int) $request->input('page', 1), 1);
         $pageSize = min(max((int) $request->input('page_size', 20), 1), 200);
+        $params = $request->all();
 
-        $query = EnrollmentFilters::fromRequest($request->all());
-        $total = (clone $query)->toBase()->getCountForPagination();
-        $rows = $query->forPage($page, $pageSize)->get();
+        // Counting an unfiltered 3-table join over 5M+ rows is the one query
+        // an index can't help with, so skip the join for COUNT when nothing
+        // in the request actually needs it (see EnrollmentFilters::needsJoin).
+        $total = EnrollmentFilters::fromRequest($params, EnrollmentFilters::needsJoin($params))
+            ->toBase()
+            ->getCountForPagination();
+
+        $rows = EnrollmentFilters::fromRequest($params, true)->forPage($page, $pageSize)->get();
 
         return EnrollmentResource::collection($rows)->additional([
             'meta' => [
@@ -44,24 +50,30 @@ class EnrollmentController extends Controller
         ]);
     }
 
-    public function store(StoreEnrollmentRequest $request, CreateEnrollment $action): RedirectResponse
+    public function store(StoreEnrollmentRequest $request, CreateEnrollment $action): JsonResponse
     {
-        $action->handle($request->validated());
+        $enrollment = $action->handle($request->validated());
 
-        return back()->with('success', 'KRS berhasil disimpan.');
+        return response()->json([
+            'message' => 'KRS berhasil disimpan.',
+            'data' => $enrollment,
+        ], 201);
     }
 
-    public function update(UpdateEnrollmentRequest $request, Enrollment $enrollment, UpdateEnrollment $action): RedirectResponse
+    public function update(UpdateEnrollmentRequest $request, Enrollment $enrollment, UpdateEnrollment $action): JsonResponse
     {
-        $action->handle($enrollment, $request->validated());
+        $enrollment = $action->handle($enrollment, $request->validated());
 
-        return back()->with('success', 'KRS berhasil diperbarui.');
+        return response()->json([
+            'message' => 'KRS berhasil diperbarui.',
+            'data' => $enrollment,
+        ]);
     }
 
-    public function destroy(Enrollment $enrollment): RedirectResponse
+    public function destroy(Enrollment $enrollment): JsonResponse
     {
         $enrollment->delete();
 
-        return back()->with('success', 'KRS berhasil dihapus.');
+        return response()->json(['message' => 'KRS berhasil dihapus.'], 200);
     }
 }
