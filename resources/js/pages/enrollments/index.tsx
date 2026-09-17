@@ -1,3 +1,4 @@
+import AppearanceToggleDropdown from '@/components/appearance-dropdown';
 import { AdvancedFilterDialog } from '@/components/enrollments/advanced-filter-dialog';
 import { ENROLLMENT_COLUMNS } from '@/components/enrollments/columns';
 import { EnrollmentFormDialog } from '@/components/enrollments/enrollment-form-dialog';
@@ -55,12 +56,15 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
 
     return (
         <>
-            <Head title="KRS Mahasiswa" />
+            <Head title="" />
 
             <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 sm:p-6">
-                <div>
-                    <h1 className="text-xl font-semibold">Kartu Rencana Studi (KRS)</h1>
-                    <p className="text-muted-foreground text-sm">Kelola pengambilan mata kuliah mahasiswa per tahun ajaran.</p>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-xl font-semibold">Kartu Rencana Studi (KRS)</h1>
+                        <p className="text-muted-foreground text-sm">Kelola pengambilan mata kuliah mahasiswa per tahun ajaran.</p>
+                    </div>
+                    <AppearanceToggleDropdown />
                 </div>
 
                 <EnrollmentToolbar

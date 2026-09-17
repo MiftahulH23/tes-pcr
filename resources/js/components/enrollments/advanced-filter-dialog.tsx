@@ -97,7 +97,7 @@ export function AdvancedFilterDialog({ open, onOpenChange, logic, onLogicChange,
                                 value={condition.value}
                                 onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
                                 placeholder={valuePlaceholder(condition.op)}
-                                className="min-w-0 flex-1"
+                                className="min-w-0 flex-1 focus-visible:ring-0"
                             />
 
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeCondition(condition.id)}>
