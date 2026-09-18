@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import type { Enrollment, FilterableColumn, SortRule } from '@/types/enrollment';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface EnrollmentTableProps {
     rows: Enrollment[];
@@ -16,6 +17,15 @@ interface EnrollmentTableProps {
 }
 
 export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, onDelete }: EnrollmentTableProps) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Reset horizontal scroll on every new page/filter/sort so a column left
+    // scrolled-into-view on one page doesn't carry over and leave a
+    // mismatched gap when the next page's content is narrower.
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ left: 0 });
+    }, [rows]);
+
     return (
         <div className="min-w-0 space-y-1">
             <p className="text-muted-foreground text-xs lg:hidden">Geser tabel ke kanan untuk melihat kolom lainnya →</p>
@@ -23,7 +33,7 @@ export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, on
                 {/* w-full on the base Table shrinks/wraps cells to fit instead of overflowing on
                 narrow screens; min-w plus nowrap cells force natural width so this wrapper's
                 overflow-x-auto actually kicks in and scrolls instead of squashing columns. */}
-                <Table className="min-w-[900px]">
+                <Table containerRef={scrollRef} className="min-w-[900px]">
                     <TableHeader>
                         <TableRow>
                             {ENROLLMENT_COLUMNS.map((column) => (
