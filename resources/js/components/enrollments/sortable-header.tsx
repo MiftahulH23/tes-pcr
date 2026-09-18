@@ -1,8 +1,8 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useRef } from 'react';
 import { TableHead } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import type { FilterableColumn, SortRule } from '@/types/enrollment';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { useRef } from 'react';
 
 interface SortableHeaderProps {
     field: FilterableColumn;
@@ -32,7 +32,7 @@ export function SortableHeader({ field, label, sorts, onToggle }: SortableHeader
         <TableHead
             role="button"
             tabIndex={0}
-            className={cn('cursor-pointer touch-manipulation select-none whitespace-nowrap', active && 'text-foreground font-semibold')}
+            className={cn('cursor-pointer touch-manipulation whitespace-nowrap outline-none select-none', active && 'text-foreground font-semibold')}
             onClick={(e) => {
                 if (longPressFired.current) {
                     longPressFired.current = false;

@@ -13,6 +13,7 @@ import { apiFetch } from '@/lib/api';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface EnrollmentsPageProps {
     statuses: EnrollmentStatus[];
@@ -47,7 +48,10 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
 
         try {
             await apiFetch(route('enrollments.destroy', pendingDelete.id), { method: 'DELETE' });
+            toast.success('KRS berhasil dihapus.');
             table.refetch();
+        } catch {
+            toast.error('Gagal menghapus KRS. Coba lagi.');
         } finally {
             setDeleting(false);
             setPendingDelete(null);

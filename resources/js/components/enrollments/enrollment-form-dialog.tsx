@@ -9,6 +9,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { validateEnrollmentForm } from '@/lib/enrollment-validation';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
 import { useEffect, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
 
 interface FormValues {
     student_nim: string;
@@ -116,11 +117,15 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                 body: JSON.stringify(payload),
             });
 
+            toast.success(isEdit ? 'KRS berhasil diperbarui.' : 'KRS berhasil ditambahkan.');
             onSaved();
             onOpenChange(false);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors(err.errors);
+                toast.error('Gagal menyimpan KRS — periksa kembali isian yang bertanda merah.');
+            } else {
+                toast.error('Gagal menyimpan KRS. Coba lagi.');
             }
         } finally {
             setSubmitting(false);
