@@ -18,7 +18,7 @@ interface EnrollmentTableProps {
 export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, onDelete }: EnrollmentTableProps) {
     return (
         <div className="min-w-0 space-y-1">
-            <p className="text-muted-foreground text-xs sm:hidden">Geser tabel ke kanan untuk melihat kolom lainnya →</p>
+            <p className="text-muted-foreground text-xs lg:hidden">Geser tabel ke kanan untuk melihat kolom lainnya →</p>
             <div className="overflow-hidden rounded-lg border">
                 {/* w-full on the base Table shrinks/wraps cells to fit instead of overflowing on
                 narrow screens; min-w plus nowrap cells force natural width so this wrapper's
