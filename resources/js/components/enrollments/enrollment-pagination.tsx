@@ -51,12 +51,8 @@ export function EnrollmentPagination({ meta, onPageChange, onPageSizeChange }: E
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-4 py-3">
-            <p className="text-muted-foreground text-sm">
-                Total <span className="text-foreground font-medium">{meta.total.toLocaleString('id-ID')}</span> baris
-            </p>
-
-            <Pagination className="mx-0 w-auto">
+        <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <Pagination className="order-1 w-auto sm:order-2 sm:mx-0">
                 <PaginationContent>
                     <PaginationItem>
                         <PaginationPrevious
@@ -98,20 +94,26 @@ export function EnrollmentPagination({ meta, onPageChange, onPageSizeChange }: E
                 </PaginationContent>
             </Pagination>
 
-            <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Baris/halaman</span>
-                <Select value={String(meta.page_size)} onValueChange={(v) => onPageSizeChange(Number(v))}>
-                    <SelectTrigger className="w-20">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {PAGE_SIZE_OPTIONS.map((size) => (
-                            <SelectItem key={size} value={String(size)}>
-                                {size}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="order-2 flex items-center justify-between gap-3 sm:contents">
+                <div className="order-2 flex items-center gap-2 sm:order-3">
+                    <span className="text-muted-foreground text-sm">Baris/halaman</span>
+                    <Select value={String(meta.page_size)} onValueChange={(v) => onPageSizeChange(Number(v))}>
+                        <SelectTrigger className="w-20">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PAGE_SIZE_OPTIONS.map((size) => (
+                                <SelectItem key={size} value={String(size)}>
+                                    {size}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <p className="text-muted-foreground order-3 text-sm sm:order-1">
+                    Total <span className="text-foreground font-medium">{meta.total.toLocaleString('id-ID')}</span> baris
+                </p>
             </div>
         </div>
     );
