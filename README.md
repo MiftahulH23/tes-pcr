@@ -273,15 +273,28 @@ Setiap push ke branch `main` yang lolos test suite (`.github/workflows/tests.yml
 
 ### Firewall
 
+`ufw` aktif di VPS produksi, hanya mengizinkan port yang benar-benar dipakai:
+
+```
+Status: active
+Default: deny (incoming), allow (outgoing)
+
+22/tcp   ALLOW   Anywhere   (SSH)
+80/tcp   ALLOW   Anywhere   (HTTP)
+443/tcp  ALLOW   Anywhere   (HTTPS)
+```
+
+Semua port lain (termasuk PostgreSQL 5432) ditolak secara default — database hanya diakses via `localhost` oleh aplikasi di server yang sama, tidak diekspos ke internet.
+
+Untuk mereplikasi setup ini di server baru:
+
 ```bash
 sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw enable
-sudo ufw status
+sudo ufw status verbose
 ```
-
-PostgreSQL tidak dibuka ke publik — hanya diakses via `localhost` oleh aplikasi di server yang sama.
 
 ## Catatan Stack & Asumsi
 
