@@ -33,7 +33,6 @@ createInertiaApp({
                             actionButton: 'rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground',
                             cancelButton: 'rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground',
                             closeButton: 'border-border bg-background text-foreground',
-                            success: 'border-l-4 border-l-green-600 dark:border-l-green-500',
                             error: 'border-l-4 border-l-destructive',
                         },
                     }}
