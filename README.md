@@ -151,7 +151,10 @@ Lalu jalankan:
 php artisan test
 ```
 
-> Test suite yang ada saat ini adalah bawaan starter kit (autentikasi, profile settings) — belum ada test khusus fitur KRS karena fokus waktu diarahkan ke fungsionalitas dan performa di skala 5 juta baris.
+Selain test bawaan starter kit (autentikasi, profile settings), ada test khusus fitur KRS di `tests/Feature/Actions/CreateEnrollmentTest.php` dan `tests/Feature/Support/EnrollmentFiltersTest.php`:
+
+- **`CreateEnrollmentTest`**: insert ke 3 tabel saat student/course belum ada, upsert (reuse) saat sudah ada, dan atomicity — transaksi rollback total (tidak ada student/course/enrollment yang tersimpan) kalau insert enrollment gagal di tengah jalan.
+- **`EnrollmentFiltersTest`**: live search lintas kolom, quick filter, advanced filter AND & OR, multi-column sort, dan `needsJoin()` (deteksi kapan query benar-benar perlu join, lihat [Strategi Performa](#strategi-performa)).
 
 ## API / Routes
 
