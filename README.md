@@ -178,6 +178,10 @@ Kolom yang bisa di-filter/sort/search: `student_nim`, `student_name`, `course_co
 
 Operator advanced filter yang didukung: `contains`, `startsWith`, `equal`, `in`, `between` (lihat `app/Support/EnrollmentFilters.php`).
 
+### Postman Collection
+
+Koleksi request siap-pakai (list dengan pagination/sort/filter/search, create valid & invalid, duplicate check, update, delete, export) ada di [`docs/postman_collection.json`](docs/postman_collection.json). Import ke Postman/Insomnia, lalu set variable `base_url` ke `http://localhost:8000` (local) atau `https://tes.miftahulhuda.site` (production).
+
 ## Keputusan Desain
 
 - **Soft delete untuk enrollments**: dipilih dibanding hard delete supaya histori KRS tidak hilang permanen (bisa dipulihkan langsung dari database bila diperlukan, misal salah hapus). Data `students`/`courses` tidak ikut ter-cascade delete ketika enrollment dihapus.
@@ -211,6 +215,12 @@ Export tidak memuat seluruh dataset ke memori. `ExportEnrollmentsCsv` memakai `l
 - **Sort by kolom relasi (`student_name`/`course_name`) tetap lambat (~2-2.5 detik)** karena membutuhkan JOIN sungguhan across seluruh tabel untuk `ORDER BY` — tidak bisa dihindari dengan subquery seperti filter. Solusi produksi: denormalisasi kolom tampilan (`student_name`, `course_code`) langsung ke tabel `enrollments` (di-update via trigger/event saat data terkait berubah), sehingga sort tidak perlu join sama sekali. Tidak diimplementasikan di sini karena menambah kompleksitas sinkronisasi data yang di luar scope waktu tes.
 - **Pagination `OFFSET` melambat di halaman yang sangat jauh** (halaman ~200.000 dari total ~250.000 bisa memakan ±5 detik) — karakteristik umum `LIMIT/OFFSET` di database manapun untuk dataset besar. Solusi produksi: keyset/cursor pagination (`WHERE id < id_terakhir`), namun ini mengorbankan kemampuan lompat ke nomor halaman sembarang yang disediakan UI tabel data saat ini.
 - **`php artisan serve` (dev server bawaan PHP) memproses request secara terbatas** dibanding PHP-FPM di produksi. Untuk local development yang lebih stabil saat beberapa fitur diuji bersamaan (misal export berjalan sambil create data), jalankan dengan `php artisan serve --no-reload` (mengaktifkan `PHP_CLI_SERVER_WORKERS=4` yang sudah diset di `.env`) — ini juga default yang dipakai `composer run dev`.
+
+## Keamanan & Observability
+
+- **CORS**: tidak ada konfigurasi CORS eksplisit, dan ini disengaja — aplikasi ini monolith Inertia (frontend dirender oleh backend yang sama, satu origin), bukan REST API terpisah yang diakses dari domain lain. Tidak ada request cross-origin yang perlu diizinkan, jadi CORS tidak relevan untuk arsitektur ini.
+- **SQL injection**: seluruh query memakai Eloquent/Query Builder dengan parameter binding (tidak ada raw SQL dengan interpolasi string), termasuk kolom dinamis untuk sort/filter yang divalidasi lewat whitelist (`EnrollmentFilters::COLUMNS`) sebelum dipakai di query.
+- **Request logging**: middleware `App\Http\Middleware\LogRequests` mencatat setiap request (method, path, status code, durasi, IP) ke log channel default (`storage/logs/laravel.log`) untuk observability dasar.
 
 ## Deployment
 

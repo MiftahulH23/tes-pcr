@@ -1,0 +1,159 @@
+{
+  "info": {
+    "name": "Akademik KRS — Enrollments API",
+    "description": "Koleksi request untuk fitur KRS (enrollments): list/pagination/sort/filter/search, create (insert 3 tabel), update, delete, dan export CSV. Set variable {{base_url}} ke http://localhost:8000 (local) atau https://tes.miftahulhuda.site (production).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "enrollment_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "List enrollments (default)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/enrollments/data?page=1&page_size=20",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "data"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List enrollments (search + quick filter + sort)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/enrollments/data?page=1&page_size=20&q=Ahmad&status[]=APPROVED&status[]=DRAFT&semester[]=GENAP&sort=[{\"field\":\"academic_year\",\"dir\":\"desc\"},{\"field\":\"student_nim\",\"dir\":\"asc\"}]",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "data"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "20" },
+            { "key": "q", "value": "Ahmad" },
+            { "key": "status[]", "value": "APPROVED" },
+            { "key": "status[]", "value": "DRAFT" },
+            { "key": "semester[]", "value": "GENAP" },
+            { "key": "sort", "value": "[{\"field\":\"academic_year\",\"dir\":\"desc\"},{\"field\":\"student_nim\",\"dir\":\"asc\"}]" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List enrollments (advanced filter AND)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/enrollments/data?page=1&page_size=20&filters={\"logic\":\"and\",\"conditions\":[{\"field\":\"status\",\"op\":\"equal\",\"value\":\"APPROVED\"},{\"field\":\"course_code\",\"op\":\"contains\",\"value\":\"IF\"}]}",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "data"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "20" },
+            { "key": "filters", "value": "{\"logic\":\"and\",\"conditions\":[{\"field\":\"status\",\"op\":\"equal\",\"value\":\"APPROVED\"},{\"field\":\"course_code\",\"op\":\"contains\",\"value\":\"IF\"}]}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List enrollments (advanced filter OR)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/enrollments/data?page=1&page_size=20&filters={\"logic\":\"or\",\"conditions\":[{\"field\":\"status\",\"op\":\"equal\",\"value\":\"REJECTED\"},{\"field\":\"semester\",\"op\":\"equal\",\"value\":\"GANJIL\"}]}",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "data"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "20" },
+            { "key": "filters", "value": "{\"logic\":\"or\",\"conditions\":[{\"field\":\"status\",\"op\":\"equal\",\"value\":\"REJECTED\"},{\"field\":\"semester\",\"op\":\"equal\",\"value\":\"GANJIL\"}]}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create enrollment (valid — insert 3 tabel)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments", "host": ["{{base_url}}"], "path": ["enrollments"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student\": { \"nim\": \"10999001\", \"name\": \"Postman Tester\", \"email\": \"postman.tester@example.com\" },\n  \"course\": { \"code\": \"PM101\", \"name\": \"Postman Testing 101\", \"credits\": 3 },\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GANJIL\",\n  \"status\": \"DRAFT\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create enrollment (invalid payload — expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments", "host": ["{{base_url}}"], "path": ["enrollments"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student\": { \"nim\": \"abc\", \"name\": \"\", \"email\": \"not-an-email\" },\n  \"course\": { \"code\": \"if101\", \"name\": \"\", \"credits\": 99 },\n  \"academic_year\": \"2025-2026\",\n  \"semester\": \"INVALID\",\n  \"status\": \"INVALID\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create enrollment (duplicate NIM/code — expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments", "host": ["{{base_url}}"], "path": ["enrollments"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student\": { \"nim\": \"10999001\", \"name\": \"Postman Tester\", \"email\": \"different-email@example.com\" },\n  \"course\": { \"code\": \"PM101\", \"name\": \"Postman Testing 101\", \"credits\": 3 },\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GANJIL\",\n  \"status\": \"DRAFT\"\n}"
+        },
+        "description": "Kirim dengan email berbeda tapi NIM sama seperti request 'Create enrollment (valid)' di atas — harus ditolak karena student.email unique tapi nim sudah dipakai student lain, atau kombinasi (student, course, academic_year, semester) sudah ada (unique KRS constraint)."
+      }
+    },
+    {
+      "name": "Update enrollment",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments/{{enrollment_id}}", "host": ["{{base_url}}"], "path": ["enrollments", "{{enrollment_id}}"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GENAP\",\n  \"status\": \"APPROVED\",\n  \"student\": { \"name\": \"Postman Tester (Updated)\" },\n  \"course\": { \"name\": \"Postman Testing 101 (Updated)\" }\n}"
+        }
+      }
+    },
+    {
+      "name": "Delete enrollment (soft delete)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments/{{enrollment_id}}", "host": ["{{base_url}}"], "path": ["enrollments", "{{enrollment_id}}"] }
+      }
+    },
+    {
+      "name": "Export CSV (seluruh data, tanpa filter)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/enrollments/export", "host": ["{{base_url}}"], "path": ["enrollments", "export"] }
+      }
+    },
+    {
+      "name": "Export CSV (mengikuti filter aktif)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/enrollments/export?status[]=APPROVED&q=Ahmad",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "export"],
+          "query": [
+            { "key": "status[]", "value": "APPROVED" },
+            { "key": "q", "value": "Ahmad" }
+          ]
+        }
+      }
+    }
+  ]
+}
