@@ -48,9 +48,9 @@ export function EnrollmentToolbar({
     exportFiltered,
 }: EnrollmentToolbarProps) {
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative w-full sm:w-72">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-col gap-2 lg:flex-row lg:items-center">
+                <div className="relative w-full lg:w-72">
                     <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
                     <Input
                         value={search}
@@ -110,11 +110,11 @@ export function EnrollmentToolbar({
                 </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+            <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center">
                 <TooltipProvider delayDuration={200}>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                            <Button variant="outline" size="sm" className="w-full lg:w-auto" asChild>
                                 <a href={exportHref}>
                                     <Download className="size-4" />
                                     Export CSV
@@ -140,7 +140,7 @@ export function EnrollmentToolbar({
                     </Tooltip>
                 </TooltipProvider>
 
-                <Button size="sm" className="w-full sm:w-auto" onClick={onOpenCreate}>
+                <Button size="sm" className="w-full lg:w-auto" onClick={onOpenCreate}>
                     <Plus className="size-4" />
                     Tambah KRS
                 </Button>
