@@ -243,7 +243,8 @@ Setiap push ke branch `main` yang lolos test suite (`.github/workflows/tests.yml
 1. Workflow `deploy` menunggu workflow `tests` selesai dengan status sukses pada branch `main` (`workflow_run` trigger).
 2. GitHub Actions SSH ke VPS (pakai [appleboy/ssh-action](https://github.com/appleboy/ssh-action)) dan menjalankan:
    ```bash
-   git pull origin main
+   git fetch origin main
+   git reset --hard origin/main
    composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
    npm ci
    npm run build
