@@ -67,13 +67,19 @@ export function EnrollmentPagination({ meta, onPageChange, onPageSizeChange }: E
                         />
                     </PaginationItem>
 
+                    <PaginationItem className="sm:hidden">
+                        <span className="text-muted-foreground px-2 text-sm whitespace-nowrap">
+                            Hal {meta.page.toLocaleString('id-ID')} / {lastPage.toLocaleString('id-ID')}
+                        </span>
+                    </PaginationItem>
+
                     {pageNumbers(meta.page, lastPage).map((page, index) =>
                         page === 'ellipsis' ? (
-                            <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationItem key={`ellipsis-${index}`} className="hidden sm:block">
                                 <PaginationEllipsis />
                             </PaginationItem>
                         ) : (
-                            <PaginationItem key={page}>
+                            <PaginationItem key={page} className="hidden sm:block">
                                 <PaginationLink href="#" isActive={page === meta.page} onClick={goTo(page)}>
                                     {page}
                                 </PaginationLink>
