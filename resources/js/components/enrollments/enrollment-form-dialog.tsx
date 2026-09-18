@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ApiError, apiFetch } from '@/lib/api';
+import { validateEnrollmentForm } from '@/lib/enrollment-validation';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
 import { useEffect, useState, type ReactNode } from 'react';
 
@@ -83,6 +84,13 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
     const fieldError = (key: string) => errors[key]?.[0];
 
     const submit = async () => {
+        const validationErrors = validateEnrollmentForm(values, isEdit);
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
         setSubmitting(true);
         setErrors({});
 
