@@ -33,7 +33,7 @@ Dibangun untuk Tes Teknis Web Developer (Full Stack) Q3 2026.
 | Database | PostgreSQL, termasuk fitur `pg_trgm` untuk pencarian cepat |
 | Build tool | Vite |
 
-Versi yang diuji di CI: PHP 8.4, Node.js 22, PostgreSQL 18.
+Versi yang dipakai: di CI PHP 8.4, Node.js 22, PostgreSQL 18; di production PHP 8.4.25, Node.js 20.20, PostgreSQL 18, Nginx 1.24 (Ubuntu 24.04).
 
 ## Struktur Fitur
 
@@ -87,7 +87,7 @@ Aturan kerja yang lebih rinci untuk kontributor (termasuk agent AI) ada di [`AGE
 
 - PHP 8.4 dengan ekstensi `pdo_pgsql` dan `pgsql` aktif
 - Composer
-- Node.js dan npm (CI memakai Node.js 22)
+- Node.js 20+ dan npm (production memakai 20.x, CI memakai 22)
 - PostgreSQL dengan ekstensi `pg_trgm` (di sebagian distribusi ada di paket `postgresql-contrib`). Migration menjalankan `CREATE EXTENSION IF NOT EXISTS pg_trgm`; di PostgreSQL 13+ ekstensi ini berstatus *trusted* sehingga cukup dijalankan sebagai owner database, di versi lebih lama perlu superuser.
 
 ### 1. Clone & install dependency
@@ -423,7 +423,7 @@ Sistem ini diuji langsung di dataset **5.003.807 baris** enrollments (+200.000 s
 
 Export tidak memuat seluruh dataset ke memori. `ExportEnrollmentsCsv` memakai `lazyById()` Laravel — iterasi memakai `WHERE id > id_terakhir ORDER BY id LIMIT n` per batch (bukan `OFFSET`), lalu langsung stream tiap baris ke response tanpa menahan baris sebelumnya di memori. Diverifikasi: penggunaan memori PHP tetap **di bawah 60MB** sepanjang proses export 5 juta baris, dan export tetap menghasilkan file yang benar (byte-identik) di setiap percobaan.
 
-Karena stream 5 juta baris berjalan beberapa menit, action export memanggil `set_time_limit(0)`. Tanpa itu, batas waktu eksekusi bawaan PHP-FPM (30 detik) memotong file secara diam-diam di sekitar 11% data (HTTP 200 tanpa pesan error). **Diverifikasi di production** (VPS, PHP-FPM): unduhan `/enrollments/export` tanpa filter menghasilkan 5.003.848 baris (1 header + 5.003.847 data, sama persis dengan total di database), ±358 MB, dalam ±5,6 menit (±14.800 baris/detik).
+Karena stream 5 juta baris berjalan beberapa menit, action export memanggil `set_time_limit(0)`. Tanpa itu, batas waktu eksekusi bawaan PHP-FPM (30 detik) memotong file secara diam-diam di sekitar 11% data (HTTP 200 tanpa pesan error). Penyebabnya dikonfirmasi di VPS: `/etc/php/8.4/fpm/php.ini` berisi `max_execution_time = 30` (bawaan) dan `request_terminate_timeout` tidak diaktifkan, jadi cukup diatasi di kode tanpa mengubah konfigurasi server. **Diverifikasi di production** (VPS, PHP-FPM): unduhan `/enrollments/export` tanpa filter menghasilkan 5.003.848 baris (1 header + 5.003.847 data, sama persis dengan total di database), ±358 MB, dalam ±5,6 menit (±14.800 baris/detik).
 
 ### Keterbatasan yang diketahui
 
@@ -447,10 +447,10 @@ Aplikasi live di **https://tes.miftahulhuda.site**.
 
 | Komponen | Pilihan |
 |---|---|
-| Server | VPS (Ubuntu), path project di `/var/www/tes-pcr` |
-| Web server | Nginx 1.24 + PHP-FPM (`php8.4-fpm`) lewat FastCGI |
-| Database | PostgreSQL (setup sama seperti [Setup Lokal](#setup-lokal)) |
-| SSL | Let's Encrypt (Certbot); HTTP otomatis dialihkan ke HTTPS (301) |
+| Server | VPS Ubuntu 24.04, path project di `/var/www/tes-pcr` |
+| Web server | Nginx 1.24 + PHP-FPM 8.4 (`php8.4-fpm`, socket unix) lewat FastCGI |
+| Database | PostgreSQL 18 (setup sama seperti [Setup Lokal](#setup-lokal)) |
+| SSL | Let's Encrypt (Certbot, sertifikat ECDSA), diperpanjang otomatis oleh `certbot.timer` (systemd); HTTP dialihkan ke HTTPS (301) |
 | Firewall | `ufw`, hanya port 22 (SSH), 80 (HTTP), 443 (HTTPS) yang terbuka |
 
 ### CI/CD — Auto-deploy
@@ -519,9 +519,9 @@ sudo ufw status verbose
 
 ### Setup Server dari Nol (referensi)
 
-Langkah standar untuk menyiapkan server Ubuntu baru. Ini panduan referensi, **bukan salinan konfigurasi server produksi**; sesuaikan nama domain, path, dan versi.
+Langkah untuk menyiapkan server Ubuntu baru agar setara dengan production. Konfigurasi Nginx di bawah adalah yang dipakai di production (sebelum Certbot menambahkan bagian SSL); daftar paket PHP adalah contoh yang umum untuk Laravel. Sesuaikan nama domain, path, dan versi.
 
-1. **Paket**: `nginx`, `postgresql`, `composer`, `certbot` + `python3-certbot-nginx`, Node.js 22 (mis. lewat NodeSource), dan PHP 8.4 (jika belum ada di repo bawaan, lewat PPA `ondrej/php`):
+1. **Paket**: `nginx`, `postgresql`, `composer`, `certbot` + `python3-certbot-nginx`, Node.js 20+ (mis. lewat NodeSource), dan PHP 8.4 (jika belum ada di repo bawaan, lewat PPA `ondrej/php`):
    ```bash
    sudo apt install php8.4-fpm php8.4-cli php8.4-pgsql php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-intl php8.4-bcmath
    ```
@@ -535,21 +535,33 @@ Langkah standar untuk menyiapkan server Ubuntu baru. Ini panduan referensi, **bu
    php artisan migrate --force
    php artisan optimize
    ```
-5. **Nginx** — contoh server block standar Laravel (`/etc/nginx/sites-available/tes-pcr`, di-symlink ke `sites-enabled`):
+5. **Nginx** — server block aplikasi (`/etc/nginx/sites-available/tes-pcr`, di-symlink ke `sites-enabled`). Tidak ada `fastcgi_read_timeout` atau pengaturan buffering khusus (default Nginx):
    ```nginx
    server {
        listen 80;
        server_name tes.miftahulhuda.site;
        root /var/www/tes-pcr/public;
+
+       add_header X-Frame-Options "SAMEORIGIN";
+       add_header X-Content-Type-Options "nosniff";
+
        index index.php;
+
+       charset utf-8;
 
        location / {
            try_files $uri $uri/ /index.php?$query_string;
        }
 
+       location = /favicon.ico { access_log off; log_not_found off; }
+       location = /robots.txt  { access_log off; log_not_found off; }
+
+       error_page 404 /index.php;
+
        location ~ \.php$ {
-           include snippets/fastcgi-php.conf;
            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+           fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+           include fastcgi_params;
        }
 
        location ~ /\.(?!well-known).* {
@@ -557,5 +569,5 @@ Langkah standar untuk menyiapkan server Ubuntu baru. Ini panduan referensi, **bu
        }
    }
    ```
-6. **SSL**: `sudo certbot --nginx -d tes.miftahulhuda.site` (menambahkan blok HTTPS dan pengalihan HTTP → HTTPS).
+6. **SSL**: `sudo certbot --nginx -d tes.miftahulhuda.site`. Certbot mengubah `listen 80` menjadi `listen 443 ssl` (plus `ssl_certificate`, `ssl_certificate_key`, `options-ssl-nginx.conf`, `ssl_dhparam`) dan menambah blok `server` kedua di port 80 yang membalas `301` ke HTTPS untuk domain ini dan `404` untuk host lain. Perpanjangan otomatis berjalan lewat `certbot.timer`; cek dengan `systemctl list-timers | grep certbot`.
 7. **Firewall** dan **CI/CD**: ikuti dua bagian di atas.
