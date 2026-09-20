@@ -1,5 +1,6 @@
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,8 @@ interface FormValues {
     academic_year: string;
     semester: Semester | '';
     status: EnrollmentStatus | '';
+    student_existing: boolean;
+    course_existing: boolean;
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -42,6 +45,8 @@ const EMPTY_FORM: FormValues = {
     academic_year: '',
     semester: '',
     status: 'DRAFT',
+    student_existing: false,
+    course_existing: false,
 };
 
 interface EnrollmentFormDialogProps {
@@ -77,6 +82,8 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                       academic_year: enrollment.academic_year,
                       semester: enrollment.semester,
                       status: enrollment.status,
+                      student_existing: false,
+                      course_existing: false,
                   }
                 : EMPTY_FORM,
         );
@@ -104,8 +111,12 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                   course: { name: values.course_name, credits: values.course_credits ? Number(values.course_credits) : undefined },
               }
             : {
-                  student: { nim: values.student_nim, name: values.student_name, email: values.student_email },
-                  course: { code: values.course_code, name: values.course_name, credits: Number(values.course_credits) },
+                  student: values.student_existing
+                      ? { nim: values.student_nim, existing: true }
+                      : { nim: values.student_nim, name: values.student_name, email: values.student_email },
+                  course: values.course_existing
+                      ? { code: values.course_code, existing: true }
+                      : { code: values.course_code, name: values.course_name, credits: Number(values.course_credits) },
                   academic_year: values.academic_year,
                   semester: values.semester,
                   status: values.status,
@@ -148,6 +159,22 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                 >
                     <SectionLabel>Data Mahasiswa</SectionLabel>
 
+                    {!isEdit && (
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="student_existing"
+                                checked={values.student_existing}
+                                onCheckedChange={(checked) => {
+                                    setErrors({});
+                                    setValues((v) => ({ ...v, student_existing: checked === true, student_name: '', student_email: '' }));
+                                }}
+                            />
+                            <Label htmlFor="student_existing" className="font-normal">
+                                Mahasiswa sudah terdaftar
+                            </Label>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
                         <div className="grid gap-1.5">
                             <Label htmlFor="student_nim">NIM</Label>
@@ -167,6 +194,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             <Input
                                 id="student_name"
                                 value={values.student_name}
+                                disabled={values.student_existing}
                                 onChange={(e) => setValues((v) => ({ ...v, student_name: e.target.value }))}
                             />
                             <div className="min-h-4">
@@ -181,6 +209,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             id="student_email"
                             type="email"
                             value={values.student_email}
+                            disabled={values.student_existing}
                             onChange={(e) => setValues((v) => ({ ...v, student_email: e.target.value }))}
                             placeholder="mahasiswa@kampus.ac.id"
                         />
@@ -191,8 +220,24 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
 
                     <SectionLabel>Data Mata Kuliah</SectionLabel>
 
+                    {!isEdit && (
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="course_existing"
+                                checked={values.course_existing}
+                                onCheckedChange={(checked) => {
+                                    setErrors({});
+                                    setValues((v) => ({ ...v, course_existing: checked === true, course_name: '', course_credits: '' }));
+                                }}
+                            />
+                            <Label htmlFor="course_existing" className="font-normal">
+                                Mata kuliah sudah ada
+                            </Label>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
-                        <div className="col-span-1 grid gap-1.5">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="course_code">Kode MK</Label>
                             <Input
                                 id="course_code"
@@ -205,11 +250,12 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                                 <InputError message={fieldError('course.code')} />
                             </div>
                         </div>
-                        <div className="col-span-2 grid gap-1.5">
+                        <div className="grid gap-1.5 sm:col-span-2">
                             <Label htmlFor="course_name">Nama MK</Label>
                             <Input
                                 id="course_name"
                                 value={values.course_name}
+                                disabled={values.course_existing}
                                 onChange={(e) => setValues((v) => ({ ...v, course_name: e.target.value }))}
                             />
                             <div className="min-h-4">
@@ -226,6 +272,7 @@ export function EnrollmentFormDialog({ open, onOpenChange, enrollment, statuses,
                             min={1}
                             max={6}
                             value={values.course_credits}
+                            disabled={values.course_existing}
                             onChange={(e) => setValues((v) => ({ ...v, course_credits: e.target.value }))}
                         />
                         <div className="min-h-4">

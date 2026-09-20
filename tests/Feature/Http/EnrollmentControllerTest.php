@@ -13,6 +13,7 @@ class EnrollmentControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** New-data mode: registers a brand-new student and course. */
     private function payload(array $overrides = []): array
     {
         return array_replace_recursive([
@@ -24,9 +25,19 @@ class EnrollmentControllerTest extends TestCase
         ], $overrides);
     }
 
-    private function createEnrollment(array $overrides = []): int
+    /** Existing mode: reuses the student and course that payload() registered. */
+    private function existing(array $overrides = []): array
     {
-        return $this->postJson('/enrollments', $this->payload($overrides))->assertCreated()->json('data.id');
+        return array_replace_recursive(
+            $this->payload(),
+            ['student' => ['existing' => true], 'course' => ['existing' => true]],
+            $overrides,
+        );
+    }
+
+    private function createEnrollment(?array $payload = null): int
+    {
+        return $this->postJson('/enrollments', $payload ?? $this->payload())->assertCreated()->json('data.id');
     }
 
     /** The framework skips CSRF checks while running tests; force them on to exercise the real exemption list. */
@@ -41,7 +52,7 @@ class EnrollmentControllerTest extends TestCase
         });
     }
 
-    // --- Behavior that already worked: must keep working -------------------
+    // --- Create: new data ---------------------------------------------------
 
     public function test_store_creates_student_course_and_enrollment()
     {
@@ -69,13 +80,32 @@ class EnrollmentControllerTest extends TestCase
         $this->assertDatabaseCount('enrollments', 0);
     }
 
-    public function test_store_rejects_a_duplicate_active_enrollment()
+    public function test_store_rejects_a_duplicate_nim_when_registering_a_new_student()
     {
         $this->createEnrollment();
 
-        $response = $this->postJson('/enrollments', $this->payload(['student' => ['email' => 'other@example.com']]))->assertStatus(422);
+        $response = $this->postJson('/enrollments', $this->payload([
+            'student' => ['name' => 'Orang Lain', 'email' => 'lain@example.com'],
+            'course' => ['code' => 'IF102', 'name' => 'Basis Data'],
+        ]))->assertStatus(422)->assertJsonValidationErrors(['student.nim']);
 
-        $this->assertStringContainsString('sudah ada', $response->json('errors.academic_year.0'));
+        $this->assertStringContainsString('sudah terdaftar', $response->json('errors')['student.nim'][0]);
+        $this->assertDatabaseCount('students', 1);
+        $this->assertDatabaseCount('courses', 1);
+        $this->assertDatabaseCount('enrollments', 1);
+    }
+
+    public function test_store_rejects_a_duplicate_course_code_when_adding_a_new_course()
+    {
+        $this->createEnrollment();
+
+        $response = $this->postJson('/enrollments', $this->payload([
+            'student' => ['nim' => '10000002', 'name' => 'Siti Aminah', 'email' => 'siti@example.com'],
+        ]))->assertStatus(422)->assertJsonValidationErrors(['course.code']);
+
+        $this->assertStringContainsString('sudah terdaftar', $response->json('errors')['course.code'][0]);
+        $this->assertDatabaseCount('students', 1);
+        $this->assertDatabaseCount('courses', 1);
         $this->assertDatabaseCount('enrollments', 1);
     }
 
@@ -87,6 +117,98 @@ class EnrollmentControllerTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['student.email']);
     }
+
+    // --- Create: existing student / course (one student, many enrollments) --
+
+    public function test_one_student_can_have_many_enrollments()
+    {
+        $this->createEnrollment();
+
+        // Same student, a brand-new course.
+        $this->createEnrollment($this->payload([
+            'student' => ['existing' => true],
+            'course' => ['code' => 'IF102', 'name' => 'Basis Data'],
+        ]));
+
+        // Same student, an already-registered course, another semester.
+        $this->createEnrollment($this->existing(['semester' => 'GENAP']));
+
+        $this->assertDatabaseCount('students', 1);
+        $this->assertDatabaseCount('courses', 2);
+        $this->assertDatabaseCount('enrollments', 3);
+    }
+
+    public function test_existing_mode_uses_the_stored_record_and_ignores_typed_name_and_email()
+    {
+        $this->createEnrollment();
+
+        $this->createEnrollment($this->existing([
+            'student' => ['name' => 'Orang Lain', 'email' => 'lain@example.com'],
+            'course' => ['name' => 'Nama Lain', 'credits' => 6],
+            'semester' => 'GENAP',
+        ]));
+
+        $this->assertDatabaseHas('students', ['nim' => '10000001', 'name' => 'Budi Santoso', 'email' => 'budi@example.com']);
+        $this->assertDatabaseHas('courses', ['code' => 'IF101', 'name' => 'Algoritma', 'credits' => 3]);
+    }
+
+    public function test_existing_mode_only_needs_the_nim_and_course_code()
+    {
+        $this->createEnrollment();
+
+        $this->postJson('/enrollments', [
+            'student' => ['nim' => '10000001', 'existing' => true],
+            'course' => ['code' => 'IF101', 'existing' => true],
+            'academic_year' => '2025/2026',
+            'semester' => 'GENAP',
+            'status' => 'DRAFT',
+        ])->assertCreated();
+    }
+
+    public function test_store_rejects_an_unknown_nim_when_marked_as_existing()
+    {
+        $response = $this->postJson('/enrollments', $this->payload(['student' => ['nim' => '10000009', 'existing' => true]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['student.nim']);
+
+        $this->assertStringContainsString('belum terdaftar', $response->json('errors')['student.nim'][0]);
+        $this->assertDatabaseCount('enrollments', 0);
+    }
+
+    public function test_store_rejects_an_unknown_course_code_when_marked_as_existing()
+    {
+        $this->createEnrollment();
+
+        $response = $this->postJson('/enrollments', $this->existing(['course' => ['code' => 'ZZ999']]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['course.code']);
+
+        $this->assertStringContainsString('belum terdaftar', $response->json('errors')['course.code'][0]);
+        $this->assertDatabaseCount('enrollments', 1);
+    }
+
+    public function test_store_rejects_a_duplicate_active_enrollment()
+    {
+        $this->createEnrollment();
+
+        $response = $this->postJson('/enrollments', $this->existing())->assertStatus(422);
+
+        $this->assertStringContainsString('sudah ada', $response->json('errors.academic_year.0'));
+        $this->assertDatabaseCount('enrollments', 1);
+    }
+
+    public function test_store_returns_a_clear_422_when_recreating_a_deleted_enrollment()
+    {
+        $id = $this->createEnrollment();
+        $this->deleteJson("/enrollments/$id")->assertOk();
+
+        $response = $this->postJson('/enrollments', $this->existing())->assertStatus(422);
+
+        $this->assertStringContainsString('dihapus', $response->json('errors.academic_year.0'));
+        $this->assertDatabaseCount('enrollments', 1);
+    }
+
+    // --- Update / delete ----------------------------------------------------
 
     public function test_update_changes_the_enrollment_and_the_optional_student_and_course_fields()
     {
@@ -108,12 +230,25 @@ class EnrollmentControllerTest extends TestCase
     public function test_update_rejects_moving_into_an_existing_active_combination()
     {
         $this->createEnrollment();
-        $second = $this->createEnrollment(['semester' => 'GENAP', 'student' => ['email' => 'second@example.com']]);
+        $second = $this->createEnrollment($this->existing(['semester' => 'GENAP']));
 
         $response = $this->putJson("/enrollments/$second", ['academic_year' => '2025/2026', 'semester' => 'GANJIL', 'status' => 'DRAFT'])
             ->assertStatus(422);
 
         $this->assertStringContainsString('sudah ada', $response->json('errors.academic_year.0'));
+    }
+
+    public function test_update_returns_a_clear_422_when_moving_into_a_deleted_combination()
+    {
+        $first = $this->createEnrollment();
+        $second = $this->createEnrollment($this->existing(['semester' => 'GENAP']));
+        $this->deleteJson("/enrollments/$first")->assertOk();
+
+        $response = $this->putJson("/enrollments/$second", ['academic_year' => '2025/2026', 'semester' => 'GANJIL', 'status' => 'DRAFT'])
+            ->assertStatus(422);
+
+        $this->assertStringContainsString('dihapus', $response->json('errors.academic_year.0'));
+        $this->assertDatabaseHas('enrollments', ['id' => $second, 'semester' => 'GENAP']);
     }
 
     public function test_destroy_soft_deletes_and_leaves_the_student_and_course_alone()
@@ -126,6 +261,8 @@ class EnrollmentControllerTest extends TestCase
         $this->assertDatabaseCount('students', 1);
         $this->assertDatabaseCount('courses', 1);
     }
+
+    // --- Read / export ------------------------------------------------------
 
     public function test_data_endpoint_returns_a_page_of_rows_with_pagination_meta()
     {
@@ -153,55 +290,6 @@ class EnrollmentControllerTest extends TestCase
         $this->assertCount(2, array_filter(explode("\n", trim($csv))));
     }
 
-    // --- Bugs found in production: these fail before the fixes -------------
-
-    public function test_store_accepts_an_existing_student_using_their_own_email()
-    {
-        Student::factory()->create(['nim' => '10000002', 'email' => 'own@example.com']);
-
-        $this->postJson('/enrollments', $this->payload(['student' => ['nim' => '10000002', 'email' => 'own@example.com']]))
-            ->assertCreated();
-
-        $this->assertDatabaseCount('students', 1);
-    }
-
-    public function test_store_returns_a_clear_422_when_recreating_a_deleted_enrollment()
-    {
-        $id = $this->createEnrollment();
-        $this->deleteJson("/enrollments/$id")->assertOk();
-
-        $response = $this->postJson('/enrollments', $this->payload(['student' => ['email' => 'again@example.com']]))->assertStatus(422);
-
-        $this->assertStringContainsString('dihapus', $response->json('errors.academic_year.0'));
-        $this->assertDatabaseCount('enrollments', 1);
-    }
-
-    public function test_update_returns_a_clear_422_when_moving_into_a_deleted_combination()
-    {
-        $first = $this->createEnrollment();
-        $second = $this->createEnrollment(['semester' => 'GENAP', 'student' => ['email' => 'second@example.com']]);
-        $this->deleteJson("/enrollments/$first")->assertOk();
-
-        $response = $this->putJson("/enrollments/$second", ['academic_year' => '2025/2026', 'semester' => 'GANJIL', 'status' => 'DRAFT'])
-            ->assertStatus(422);
-
-        $this->assertStringContainsString('dihapus', $response->json('errors.academic_year.0'));
-        $this->assertDatabaseHas('enrollments', ['id' => $second, 'semester' => 'GENAP']);
-    }
-
-    public function test_enrollment_endpoints_skip_csrf_while_every_other_route_still_requires_it()
-    {
-        $this->enforceCsrf();
-
-        // Reaches validation (422) / routing (404) instead of being stopped with 419.
-        $this->postJson('/enrollments', [])->assertStatus(422);
-        $this->putJson('/enrollments/999999', ['academic_year' => '2025/2026', 'semester' => 'GANJIL', 'status' => 'DRAFT'])->assertNotFound();
-        $this->deleteJson('/enrollments/999999')->assertNotFound();
-
-        // Anything outside /enrollments keeps CSRF protection.
-        $this->postJson('/login', ['email' => 'a@example.com', 'password' => 'x'])->assertStatus(419);
-    }
-
     public function test_export_lifts_the_php_time_limit_so_large_exports_are_not_cut_off()
     {
         Enrollment::factory()->create();
@@ -215,5 +303,20 @@ class EnrollmentControllerTest extends TestCase
         } finally {
             ini_set('max_execution_time', (string) $original);
         }
+    }
+
+    // --- CSRF ---------------------------------------------------------------
+
+    public function test_enrollment_endpoints_skip_csrf_while_every_other_route_still_requires_it()
+    {
+        $this->enforceCsrf();
+
+        // Reaches validation (422) / routing (404) instead of being stopped with 419.
+        $this->postJson('/enrollments', [])->assertStatus(422);
+        $this->putJson('/enrollments/999999', ['academic_year' => '2025/2026', 'semester' => 'GANJIL', 'status' => 'DRAFT'])->assertNotFound();
+        $this->deleteJson('/enrollments/999999')->assertNotFound();
+
+        // Anything outside /enrollments keeps CSRF protection.
+        $this->postJson('/login', ['email' => 'a@example.com', 'password' => 'x'])->assertStatus(419);
     }
 }

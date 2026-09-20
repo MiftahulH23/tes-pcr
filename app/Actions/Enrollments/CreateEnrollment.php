@@ -8,9 +8,10 @@ use App\Models\Student;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Upserts the student and course (create-if-missing by nim/code), then
+ * Resolves the student and course (create-if-missing by nim/code), then
  * creates the enrollment — all inside a single DB transaction so a
- * failure at any step rolls back the other inserts.
+ * failure at any step rolls back the other inserts. Whether a nim/code may
+ * already exist (reuse) or must be new is decided by StoreEnrollmentRequest.
  */
 class CreateEnrollment
 {

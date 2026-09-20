@@ -38,7 +38,7 @@ Versi yang dipakai: di CI PHP 8.4, Node.js 22, PostgreSQL 18; di production PHP 
 ## Struktur Fitur
 
 - **Skema**: `students`, `courses`, `enrollments` (FK ke keduanya), lihat [Skema Database](#skema-database) dan `database/migrations/`.
-- **Create**: `app/Actions/Enrollments/CreateEnrollment.php` — upsert student/course berdasarkan `nim`/`code` lalu insert enrollment, seluruhnya dalam **1 DB transaction** (`DB::transaction`). Jika salah satu insert gagal, semua rollback.
+- **Create**: `app/Actions/Enrollments/CreateEnrollment.php` — membuat student/course baru atau memakai yang sudah terdaftar (berdasarkan `nim`/`code`, lihat [mode Create](#keputusan-desain)), lalu insert enrollment, seluruhnya dalam **1 DB transaction** (`DB::transaction`). Jika salah satu insert gagal, semua rollback.
 - **Read (tabel data)**: `app/Http/Controllers/EnrollmentController@data` + `app/Support/EnrollmentFilters.php` — query builder terpusat untuk pagination, sort, quick filter, advanced filter (AND/OR), dan live search.
 - **Update**: `app/Actions/Enrollments/UpdateEnrollment.php` — bisa sekaligus ubah nama/email student dan nama/credits course terkait.
 - **Delete**: soft delete (`Enrollment` pakai trait `SoftDeletes`) — lihat bagian [Keputusan Desain](#keputusan-desain).
@@ -78,6 +78,7 @@ Aturan kerja yang lebih rinci untuk kontributor (termasuk agent AI) ada di [`AGE
   - `students`: `nim` wajib, unik, 8-12 digit angka tanpa spasi; `name` 3-100 karakter; `email` valid dan unik.
   - `courses`: `code` wajib, unik, format `[A-Z]{2,4}[0-9]{3}` (contoh `IF101`); `name` 3-120 karakter; `credits` integer 1-6.
   - `enrollments`: `academic_year` format `YYYY/YYYY` dengan tahun kedua = tahun pertama + 1; `semester` `GANJIL`/`GENAP`; `status` `DRAFT`/`SUBMITTED`/`APPROVED`/`REJECTED`; kombinasi `(student_id, course_id, academic_year, semester)` tidak boleh duplikat.
+- **Keunikan `nim` dan `code` ditegakkan saat mendaftarkan data baru**: membuat mahasiswa baru dengan NIM yang sudah ada, atau mata kuliah baru dengan kode yang sudah ada, ditolak `422`. Untuk menambah KRS bagi mahasiswa/mata kuliah yang sudah terdaftar, form menyediakan checkbox **"Mahasiswa sudah terdaftar"** dan **"Mata kuliah sudah ada"** (API: `student.existing` / `course.existing`) — lihat [Keputusan Desain](#keputusan-desain). Satu mahasiswa boleh punya banyak KRS; yang ditolak hanya KRS yang persis sama.
 - Validasi berjalan di **frontend** (`resources/js/lib/enrollment-validation.ts`, memblokir submit sebelum request dikirim) dan di **backend** (FormRequest, otoritatif — payload yang tidak valid ditolak dengan HTTP 422 walau frontend dilewati).
 - Pesan validasi dan error UI dalam Bahasa Indonesia (`lang/id/validation.php`, `APP_LOCALE=id`).
 
@@ -285,9 +286,9 @@ php artisan test
 
 Selain test bawaan starter kit (autentikasi, profile settings), ada test khusus fitur KRS di `tests/Feature/Actions/`, `tests/Feature/Support/`, dan `tests/Feature/Http/`:
 
-- **`CreateEnrollmentTest`**: insert ke 3 tabel saat student/course belum ada, upsert (reuse) saat sudah ada, dan atomicity — transaksi rollback total (tidak ada student/course/enrollment yang tersimpan) kalau insert enrollment gagal di tengah jalan.
+- **`CreateEnrollmentTest`**: insert ke 3 tabel saat student/course belum ada, memakai ulang record yang sudah ada, dan atomicity — transaksi rollback total (tidak ada student/course/enrollment yang tersimpan) kalau insert enrollment gagal di tengah jalan.
 - **`EnrollmentFiltersTest`**: live search lintas kolom, quick filter, advanced filter AND & OR, multi-column sort, dan `needsJoin()` (deteksi kapan query benar-benar perlu join, lihat [Strategi Performa](#strategi-performa)).
-- **`EnrollmentControllerTest`**: seluruh endpoint lewat HTTP — create, validasi 422, duplikat, update, soft delete, pagination, export CSV, pengecualian CSRF yang tidak melebar ke rute lain, dan pesan yang jelas untuk kombinasi yang pernah dihapus.
+- **`EnrollmentControllerTest`**: seluruh endpoint lewat HTTP — create dalam mode data baru dan sudah terdaftar (satu mahasiswa banyak KRS, NIM/kode MK duplikat ditolak), validasi 422, KRS duplikat, update, soft delete, pagination, export CSV, pengecualian CSRF yang tidak melebar ke rute lain, dan pesan yang jelas untuk kombinasi yang pernah dihapus.
 
 ## API / Routes
 
@@ -351,6 +352,27 @@ Sertakan `Accept: application/json` supaya error validasi dikembalikan sebagai J
 
 Balasan: `{"message": "KRS berhasil disimpan.", "data": { "id": ..., "student_id": ..., "course_id": ..., "academic_year": "2025/2026", "semester": "GANJIL", "status": "DRAFT", ... }}`
 
+Mahasiswa dan mata kuliah masing-masing punya dua mode lewat `student.existing` / `course.existing` (default `false`):
+
+| Mode | Yang dikirim | Aturan |
+|---|---|---|
+| Data baru (default) | `student`: `nim`, `name`, `email` · `course`: `code`, `name`, `credits` | NIM / kode MK harus **belum ada** (unik) dan semua field wajib. NIM atau kode yang sudah terdaftar → `422` |
+| Sudah terdaftar | `student`: `{"nim": "...", "existing": true}` · `course`: `{"code": "...", "existing": true}` | NIM / kode MK harus **sudah ada**, hanya itu yang dipakai; nama, email, dan SKS yang ikut terkirim diabaikan. Tidak ditemukan → `422` |
+
+Contoh KRS kedua untuk mahasiswa dan mata kuliah yang sudah ada (dua mode bisa dicampur, mis. mahasiswa lama dengan mata kuliah baru):
+
+```json
+{
+  "student": { "nim": "10999001", "existing": true },
+  "course": { "code": "IF101", "existing": true },
+  "academic_year": "2025/2026",
+  "semester": "GENAP",
+  "status": "DRAFT"
+}
+```
+
+Kombinasi `(mahasiswa, mata kuliah, tahun ajaran, semester)` yang sudah ada tetap ditolak `422` di kedua mode.
+
 **`PUT /enrollments/{id}`** → `200`. Field enrollment wajib; `student` dan `course` opsional (hanya nama/email dan nama/credits yang bisa diubah):
 
 ```json
@@ -397,7 +419,7 @@ Koleksi request siap-pakai (list dengan pagination/sort/filter/search, create va
 ## Keputusan Desain
 
 - **Soft delete untuk enrollments**: dipilih dibanding hard delete supaya histori KRS tidak hilang permanen (bisa dipulihkan langsung dari database bila diperlukan, misal salah hapus). Data `students`/`courses` tidak ikut ter-cascade delete ketika enrollment dihapus. Dampaknya: baris yang sudah dihapus tetap ada di tabel dan tetap dihitung oleh unique constraint — lihat [Keterbatasan yang diketahui](#keterbatasan-yang-diketahui).
-- **Create = upsert by nim/code**: form Create selalu menerima data lengkap student+course+enrollment. Jika `nim`/`code` sudah ada di database, record yang sudah ada dipakai ulang (data yang diketik untuk field itu diabaikan); jika belum ada, dibuat baru. Untuk mahasiswa yang sudah ada, email yang diketik tidak divalidasi unik (boleh sama dengan email mahasiswa itu sendiri) dan diabaikan. Ini memenuhi syarat "3 tabel terlibat dalam 1 transaksi atomic" tanpa perlu toggle UI "pilih existing vs buat baru".
+- **Create: data baru atau yang sudah terdaftar, dipilih per entitas**: form Create punya dua checkbox, **"Mahasiswa sudah terdaftar"** dan **"Mata kuliah sudah ada"**. Tanpa dicentang (default) form meminta data baru: NIM/kode MK harus belum ada, dan mengulang NIM atau kode yang sudah terdaftar ditolak dengan pesan yang jelas — sesuai aturan bahwa keduanya unik. Dicentang, form hanya butuh NIM/kode MK dan memakai record yang sudah ada (nama/email/SKS yang terkirim diabaikan; NIM/kode yang tidak ditemukan ditolak). Dengan begitu satu mahasiswa bisa punya banyak KRS tanpa mengetik ulang datanya, dan duplikasi tidak lolos diam-diam. Ketiga tabel (`students`, `courses`, `enrollments`) tetap terlibat dalam **1 transaksi** di kedua mode.
 - **Update bisa sekaligus ubah data student/course**: form Update menyediakan field nama/email (student) dan nama/credits (course) sebagai opsional — kalau diisi, ikut ter-update dalam transaksi yang sama. Field identitas (`nim`, `course.code`) sengaja tidak bisa diubah dari form Update untuk menghindari perubahan identitas yang bisa merusak integritas riwayat KRS mahasiswa/mata kuliah lain yang memakai record yang sama.
 - **Advanced filter AND/OR**: diimplementasikan sebagai **satu grup kondisi** dengan satu operator logika (AND atau OR) yang berlaku untuk semua kondisi dalam grup itu, bukan pohon logika bersarang. Backend (`EnrollmentFilters::applyAdvanced`) menerima struktur yang mudah diperluas ke group bersarang di masa depan, tapi UI saat ini hanya mengekspos satu level karena itu yang paling umum dibutuhkan untuk kasus penggunaan KRS.
 - **Search & filter case-insensitive**: pencarian dan filter teks (`contains`, `startsWith`, `equal` pada kolom nama/kode) menggunakan `ILIKE` PostgreSQL. Untuk kolom enum (`status`, `semester`) yang juga dipakai untuk sorting/index, case-insensitivity dilakukan dengan menormalisasi **nilai input** ke uppercase (bukan membungkus kolom dengan `LOWER()`) — lihat [Strategi Performa](#strategi-performa) kenapa ini penting.

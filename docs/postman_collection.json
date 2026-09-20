@@ -110,7 +110,33 @@
           "mode": "raw",
           "raw": "{\n  \"student\": { \"nim\": \"10999001\", \"name\": \"Postman Tester\", \"email\": \"different-email@example.com\" },\n  \"course\": { \"code\": \"PM101\", \"name\": \"Postman Testing 101\", \"credits\": 3 },\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GANJIL\",\n  \"status\": \"DRAFT\"\n}"
         },
-        "description": "Kirim dengan email berbeda tapi NIM sama seperti request 'Create enrollment (valid)' di atas — harus ditolak karena student.email unique tapi nim sudah dipakai student lain, atau kombinasi (student, course, academic_year, semester) sudah ada (unique KRS constraint)."
+        "description": "Mendaftarkan mahasiswa dan mata kuliah sebagai DATA BARU dengan NIM dan kode MK yang sama seperti request 'Create enrollment (valid)' — ditolak 422 pada student.nim dan course.code (keduanya unik). Untuk memakai yang sudah terdaftar, gunakan request 'Create KRS untuk mahasiswa & mata kuliah yang sudah terdaftar'. Kombinasi (student, course, academic_year, semester) yang sudah ada juga ditolak 422 (unique KRS constraint)."
+      }
+    },
+    {
+      "name": "Create KRS untuk mahasiswa & mata kuliah yang sudah terdaftar (mode existing — expect 201)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments", "host": ["{{base_url}}"], "path": ["enrollments"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student\": { \"nim\": \"10999001\", \"existing\": true },\n  \"course\": { \"code\": \"PM101\", \"existing\": true },\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GENAP\",\n  \"status\": \"DRAFT\"\n}"
+        },
+        "description": "Jalankan setelah 'Create enrollment (valid)'. Mahasiswa 10999001 dan mata kuliah PM101 sudah terdaftar, jadi cukup NIM dan kode MK dengan existing=true — inilah cara satu mahasiswa punya banyak KRS. Nama, email, dan SKS tidak perlu dikirim (kalau dikirim, diabaikan). Kirim dua kali → yang kedua 422 (KRS duplikat)."
+      }
+    },
+    {
+      "name": "Create KRS mode existing dengan NIM yang belum terdaftar (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments", "host": ["{{base_url}}"], "path": ["enrollments"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student\": { \"nim\": \"10999777\", \"existing\": true },\n  \"course\": { \"code\": \"PM101\", \"existing\": true },\n  \"academic_year\": \"2025/2026\",\n  \"semester\": \"GANJIL\",\n  \"status\": \"DRAFT\"\n}"
+        },
+        "description": "existing=true mensyaratkan NIM sudah ada. NIM 10999777 tidak terdaftar, jadi ditolak 422 pada student.nim."
       }
     },
     {

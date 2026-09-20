@@ -8,6 +8,9 @@ export interface EnrollmentFormValues {
     academic_year: string;
     semester: string;
     status: string;
+    /** Create only: reuse a registered student / course, so only the NIM / code is needed. */
+    student_existing?: boolean;
+    course_existing?: boolean;
 }
 
 const NIM_REGEX = /^\d{8,12}$/;
@@ -27,6 +30,9 @@ export function validateEnrollmentForm(values: EnrollmentFormValues, isEdit: boo
         errors[field] = [...(errors[field] ?? []), message];
     };
 
+    const studentExisting = !isEdit && Boolean(values.student_existing);
+    const courseExisting = !isEdit && Boolean(values.course_existing);
+
     if (!isEdit) {
         if (!values.student_nim.trim()) {
             addError('student.nim', 'NIM wajib diisi.');
@@ -35,7 +41,7 @@ export function validateEnrollmentForm(values: EnrollmentFormValues, isEdit: boo
         }
     }
 
-    if (!isEdit || values.student_name.trim()) {
+    if (!studentExisting && (!isEdit || values.student_name.trim())) {
         if (!values.student_name.trim()) {
             addError('student.name', 'Nama mahasiswa wajib diisi.');
         } else if (values.student_name.trim().length < 3 || values.student_name.trim().length > 100) {
@@ -43,7 +49,7 @@ export function validateEnrollmentForm(values: EnrollmentFormValues, isEdit: boo
         }
     }
 
-    if (!isEdit || values.student_email.trim()) {
+    if (!studentExisting && (!isEdit || values.student_email.trim())) {
         if (!values.student_email.trim()) {
             addError('student.email', 'Email mahasiswa wajib diisi.');
         } else if (!EMAIL_REGEX.test(values.student_email.trim())) {
@@ -59,7 +65,7 @@ export function validateEnrollmentForm(values: EnrollmentFormValues, isEdit: boo
         }
     }
 
-    if (!isEdit || values.course_name.trim()) {
+    if (!courseExisting && (!isEdit || values.course_name.trim())) {
         if (!values.course_name.trim()) {
             addError('course.name', 'Nama mata kuliah wajib diisi.');
         } else if (values.course_name.trim().length < 3 || values.course_name.trim().length > 120) {
@@ -67,7 +73,7 @@ export function validateEnrollmentForm(values: EnrollmentFormValues, isEdit: boo
         }
     }
 
-    if (!isEdit || values.course_credits.trim()) {
+    if (!courseExisting && (!isEdit || values.course_credits.trim())) {
         if (!values.course_credits.trim()) {
             addError('course.credits', 'SKS wajib diisi.');
         } else {
