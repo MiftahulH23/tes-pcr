@@ -401,7 +401,7 @@ Koleksi request siap-pakai (list dengan pagination/sort/filter/search, create va
 - **Update bisa sekaligus ubah data student/course**: form Update menyediakan field nama/email (student) dan nama/credits (course) sebagai opsional — kalau diisi, ikut ter-update dalam transaksi yang sama. Field identitas (`nim`, `course.code`) sengaja tidak bisa diubah dari form Update untuk menghindari perubahan identitas yang bisa merusak integritas riwayat KRS mahasiswa/mata kuliah lain yang memakai record yang sama.
 - **Advanced filter AND/OR**: diimplementasikan sebagai **satu grup kondisi** dengan satu operator logika (AND atau OR) yang berlaku untuk semua kondisi dalam grup itu, bukan pohon logika bersarang. Backend (`EnrollmentFilters::applyAdvanced`) menerima struktur yang mudah diperluas ke group bersarang di masa depan, tapi UI saat ini hanya mengekspos satu level karena itu yang paling umum dibutuhkan untuk kasus penggunaan KRS.
 - **Search & filter case-insensitive**: pencarian dan filter teks (`contains`, `startsWith`, `equal` pada kolom nama/kode) menggunakan `ILIKE` PostgreSQL. Untuk kolom enum (`status`, `semester`) yang juga dipakai untuk sorting/index, case-insensitivity dilakukan dengan menormalisasi **nilai input** ke uppercase (bukan membungkus kolom dengan `LOWER()`) — lihat [Strategi Performa](#strategi-performa) kenapa ini penting.
-- **Export tanpa queue**: export di-stream langsung ke response (bukan job + link unduhan), sehingga tidak butuh worker atau penyimpanan file sementara dan user langsung mendapat file. Konsekuensinya request export tetap terbuka selama file dibuat.
+- **Export tanpa queue**: export di-stream langsung ke response (bukan job + link unduhan), sehingga tidak butuh worker atau penyimpanan file sementara dan user langsung mendapat file. Konsekuensinya request export tetap terbuka selama file dibuat (±5,6 menit untuk seluruh 5 juta baris di production); untuk skala jauh lebih besar, pindahkan ke job + link unduhan.
 
 ## Strategi Performa
 
@@ -422,6 +422,8 @@ Sistem ini diuji langsung di dataset **5.003.807 baris** enrollments (+200.000 s
 ### Export CSV
 
 Export tidak memuat seluruh dataset ke memori. `ExportEnrollmentsCsv` memakai `lazyById()` Laravel — iterasi memakai `WHERE id > id_terakhir ORDER BY id LIMIT n` per batch (bukan `OFFSET`), lalu langsung stream tiap baris ke response tanpa menahan baris sebelumnya di memori. Diverifikasi: penggunaan memori PHP tetap **di bawah 60MB** sepanjang proses export 5 juta baris, dan export tetap menghasilkan file yang benar (byte-identik) di setiap percobaan.
+
+Karena stream 5 juta baris berjalan beberapa menit, action export memanggil `set_time_limit(0)`. Tanpa itu, batas waktu eksekusi bawaan PHP-FPM (30 detik) memotong file secara diam-diam di sekitar 11% data (HTTP 200 tanpa pesan error). **Diverifikasi di production** (VPS, PHP-FPM): unduhan `/enrollments/export` tanpa filter menghasilkan 5.003.848 baris (1 header + 5.003.847 data, sama persis dengan total di database), ±358 MB, dalam ±5,6 menit (±14.800 baris/detik).
 
 ### Keterbatasan yang diketahui
 
