@@ -22,10 +22,11 @@ Include untracked files from `git status`. Sort the changes into PHP side (`app/
 
 ```bash
 php artisan test
-vendor/bin/pint --test
+vendor/bin/pint --test <changed PHP files>
 ```
 
-- If Pint fails, run `vendor/bin/pint <reported files>` and re-run `--test`. (Pint style here: `new Foo`, not `new Foo()`.)
+- Run Pint only on the files you changed. A repo-wide `vendor/bin/pint --test` reports pre-existing style diffs in untouched files (models, auth controllers, config) — leave those alone.
+- If Pint fails on your files, run `vendor/bin/pint <those files>` and re-run `--test`. (Pint style here: `new Foo`, not `new Foo()`.)
 - Tests need the Postgres database `tes_pcr_testing`. If the connection fails, report "not verified: test DB unreachable" — do not skip silently.
 
 ## 3. Frontend side changed

@@ -24,12 +24,12 @@ class StoreEnrollmentRequest extends FormRequest
         return [
             'student.nim' => ['required', 'string', 'regex:/^\d{8,12}$/'],
             'student.name' => [$studentExists ? 'nullable' : 'required', 'string', 'min:3', 'max:100'],
-            'student.email' => [
+            'student.email' => array_filter([
                 $studentExists ? 'nullable' : 'required',
                 'string',
                 'email',
-                Rule::unique('students', 'email'),
-            ],
+                $studentExists ? null : Rule::unique('students', 'email'),
+            ]),
 
             'course.code' => ['required', 'string', 'regex:/^[A-Z]{2,4}[0-9]{3}$/'],
             'course.name' => [$courseExists ? 'nullable' : 'required', 'string', 'min:3', 'max:120'],
@@ -59,17 +59,20 @@ class StoreEnrollmentRequest extends FormRequest
                 $validator->errors()->add('academic_year', 'Tahun ajaran harus berurutan, contoh 2025/2026.');
             }
 
-            $duplicate = Student::query()
+            $existing = Student::query()
                 ->where('nim', $this->input('student.nim'))
-                ->whereHas('enrollments', function ($query) {
-                    $query->whereHas('course', fn ($q) => $q->where('code', $this->input('course.code')))
-                        ->where('academic_year', $this->input('academic_year'))
-                        ->where('semester', $this->input('semester'));
-                })
-                ->exists();
+                ->first()
+                ?->enrollments()
+                ->withTrashed()
+                ->whereHas('course', fn ($q) => $q->where('code', $this->input('course.code')))
+                ->where('academic_year', $this->input('academic_year'))
+                ->where('semester', $this->input('semester'))
+                ->first();
 
-            if ($duplicate) {
-                $validator->errors()->add('academic_year', 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini sudah ada.');
+            if ($existing) {
+                $validator->errors()->add('academic_year', $existing->trashed()
+                    ? 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini pernah dibuat lalu dihapus dan masih tercatat di sistem, sehingga tidak bisa dibuat ulang.'
+                    : 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini sudah ada.');
             }
         });
     }

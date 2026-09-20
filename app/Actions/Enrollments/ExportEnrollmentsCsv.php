@@ -26,6 +26,9 @@ class ExportEnrollmentsCsv
         $filename = 'krs-export-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($query) {
+            // PHP-FPM's default 30s time limit silently cut the 5M-row export off at ~550k rows; a stream this long must lift it.
+            set_time_limit(0);
+
             $handle = fopen('php://output', 'w');
             // PHP 8.4 deprecates fputcsv() without an explicit $escape — pass
             // '' for standard double-quote CSV escaping instead of the old

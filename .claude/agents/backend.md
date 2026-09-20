@@ -32,7 +32,7 @@ Do not edit `resources/js` or `resources/css`. If your change alters what the fr
 
 ```bash
 php artisan test                     # needs Postgres DB tes_pcr_testing
-vendor/bin/pint --test               # run without --test to fix; CI enforces it (e.g. `new Foo`, not `new Foo()`)
+vendor/bin/pint --test <files you touched>   # drop --test to fix; a repo-wide run flags pre-existing diffs in untouched files, leave those (style: `new Foo`, not `new Foo()`)
 ```
 
 Add or update tests in `tests/Feature/...` mirroring the `app/` path (PHPUnit class style, `RefreshDatabase`). For query changes on large data, say what you'd check with `EXPLAIN ANALYZE` on the seeded database if you couldn't run it.

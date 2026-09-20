@@ -2,7 +2,7 @@
 
 Single-page KRS (course enrollment) CRUD, built for a technical test and live at https://tes.miftahulhuda.site. It must stay fast at 5M+ `enrollments` rows.
 This file is the working rules. `README.md` (Indonesian) is the fuller human doc — read the relevant section before changing behavior:
-"Keputusan Desain" before touching create/update/delete/filter semantics, "Strategi Performa" before touching queries or indexes, "API / Routes" for request parameters, "Seeding 5 juta baris" and "Deployment" for those workflows.
+"Keputusan Desain" before touching create/update/delete/filter semantics, "Strategi Performa" before touching queries or indexes, "API / Routes" for request parameters, "Seeding 5 Juta Baris" and "Deployment" for those workflows.
 
 ## Stack
 
@@ -21,6 +21,7 @@ Laravel 13 (PHP 8.4) · Inertia.js + React 19 + TypeScript · Vite · Tailwind C
 - One Inertia page: `GET /enrollments` → `resources/js/pages/enrollments/index.tsx`. Its only props are the enum lists.
 - Data and mutations are plain JSON endpoints in `routes/web.php`, called with `apiFetch` (`resources/js/lib/api.ts`: XSRF cookie + `ApiError`), not Inertia visits.
 - Use named routes through Ziggy, `route('enrollments.data')` — never hardcode URLs.
+- `/enrollments` and `/enrollments/*` are exempt from CSRF (`bootstrap/app.php`, `preventRequestForgery(except: …)`) because the page is public with no login, so plain `curl`/Postman work. Every other route keeps CSRF. Keep the exemption that narrow — `EnrollmentControllerTest` fails if it widens. `apiFetch` still sends the XSRF header; that's harmless.
 - Auth, settings, dashboard and welcome pages are unused starter-kit leftovers. KRS pages need no login.
 
 ## Backend rules (Laravel)
@@ -43,7 +44,7 @@ A new feature is: FormRequest + Action + Resource + controller method + named ro
 - Never wrap an indexed column in a function (`LOWER(status)`); normalize the input value instead.
 - Filter on related tables (students/courses) with `whereIn` subqueries, not JOINs. Only sorting by a related column may join (`EnrollmentFilters::needsJoin`).
 - Free text uses `ILIKE` (trigram GIN indexes exist). Column names used for sort/filter come only from the `EnrollmentFilters::COLUMNS` whitelist, never from raw input.
-- Export streams with `lazyById()`; never load the whole set. `fputcsv` needs the explicit `$escape` argument (PHP 8.4).
+- Export streams with `lazyById()`; never load the whole set. `fputcsv` needs the explicit `$escape` argument (PHP 8.4). The stream closure calls `set_time_limit(0)`: without it PHP-FPM's 30s limit silently truncated the 5M-row export at ~11% (HTTP 200, no error) on production. Test long-running endpoints against production-sized data, not a small local set.
 - Deploy runs `php artisan migrate --force` automatically. A migration touching `enrollments` must not hold a long table lock (create indexes `CONCURRENTLY`, outside a transaction).
 
 ## Frontend rules (`resources/js`)
@@ -109,6 +110,6 @@ Tests are PHPUnit-style classes in `tests/Feature/...` mirroring `app/` paths, u
 
 ## Definition of done
 
-- Backend change: `php artisan test` and `vendor/bin/pint --test` pass.
+- Backend change: `php artisan test` passes and `vendor/bin/pint --test <files you touched>` passes. A repo-wide Pint run reports pre-existing style diffs in untouched files — leave those alone.
 - Frontend change: `npm run build`, eslint and `prettier --check` on touched files pass. If you couldn't view the UI, say so instead of claiming it works.
 - Behavior or contract change: update README and every keep-in-sync point above.

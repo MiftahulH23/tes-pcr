@@ -56,16 +56,18 @@ class UpdateEnrollmentRequest extends FormRequest
                 $validator->errors()->add('academic_year', 'Tahun ajaran harus berurutan, contoh 2025/2026.');
             }
 
-            $duplicate = Enrollment::query()
+            $existing = Enrollment::withTrashed()
                 ->where('student_id', $enrollment->student_id)
                 ->where('course_id', $enrollment->course_id)
                 ->where('academic_year', $this->input('academic_year'))
                 ->where('semester', $this->input('semester'))
                 ->where('id', '!=', $enrollment->id)
-                ->exists();
+                ->first();
 
-            if ($duplicate) {
-                $validator->errors()->add('academic_year', 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini sudah ada.');
+            if ($existing) {
+                $validator->errors()->add('academic_year', $existing->trashed()
+                    ? 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini pernah dibuat lalu dihapus dan masih tercatat di sistem, sehingga tidak bisa dibuat ulang.'
+                    : 'KRS untuk mahasiswa, mata kuliah, tahun ajaran, dan semester ini sudah ada.');
             }
         });
     }

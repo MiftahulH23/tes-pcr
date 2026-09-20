@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // The KRS page has no login, so its JSON endpoints skip CSRF (plain curl/Postman work); every other route keeps it.
+        $middleware->preventRequestForgery(except: ['enrollments', 'enrollments/*']);
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
