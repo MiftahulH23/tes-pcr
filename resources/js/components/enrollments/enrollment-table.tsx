@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/enrollments/status-badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import type { Enrollment, FilterableColumn, SortRule } from '@/types/enrollment';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 interface EnrollmentTableProps {
@@ -12,11 +12,12 @@ interface EnrollmentTableProps {
     loading: boolean;
     sorts: SortRule[];
     onToggleSort: (field: FilterableColumn, multi: boolean) => void;
+    onView: (enrollment: Enrollment) => void;
     onEdit: (enrollment: Enrollment) => void;
     onDelete: (enrollment: Enrollment) => void;
 }
 
-export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, onDelete }: EnrollmentTableProps) {
+export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onView, onEdit, onDelete }: EnrollmentTableProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Reset horizontal scroll on every new page/filter/sort so a column left
@@ -72,6 +73,9 @@ export function EnrollmentTable({ rows, loading, sorts, onToggleSort, onEdit, on
                                 </TableCell>
                                 <TableCell className="whitespace-nowrap">
                                     <div className="flex gap-1">
+                                        <Button variant="ghost" size="icon" aria-label="Detail" onClick={() => onView(row)}>
+                                            <Eye className="size-4" />
+                                        </Button>
                                         <Button variant="ghost" size="icon" aria-label="Ubah" onClick={() => onEdit(row)}>
                                             <Pencil className="size-4" />
                                         </Button>

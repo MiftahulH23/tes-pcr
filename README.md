@@ -40,6 +40,7 @@ Versi yang dipakai: di CI PHP 8.4, Node.js 22, PostgreSQL 18; di production PHP 
 - **Skema**: `students`, `courses`, `enrollments` (FK ke keduanya), lihat [Skema Database](#skema-database) dan `database/migrations/`.
 - **Create**: `app/Actions/Enrollments/CreateEnrollment.php` — membuat student/course baru atau memakai yang sudah terdaftar (berdasarkan `nim`/`code`, lihat [mode Create](#keputusan-desain)), lalu insert enrollment, seluruhnya dalam **1 DB transaction** (`DB::transaction`). Jika salah satu insert gagal, semua rollback.
 - **Read (tabel data)**: `app/Http/Controllers/EnrollmentController@data` + `app/Support/EnrollmentFilters.php` — query builder terpusat untuk pagination, sort, quick filter, advanced filter (AND/OR), dan live search.
+- **Detail**: `EnrollmentController@show` + `app/Http/Resources/EnrollmentDetailResource.php` — ikon mata di kolom Aksi membuka modal berisi data lengkap satu KRS: mahasiswa (NIM, nama, email), mata kuliah (kode, nama, SKS), dan KRS (ID, tahun ajaran, semester, status, waktu dibuat dan diperbarui dalam WIB). Data diambil dari server saat modal dibuka, dengan tampilan loading, pesan error + tombol "Coba lagi", dan pesan khusus bila KRS sudah dihapus.
 - **Update**: `app/Actions/Enrollments/UpdateEnrollment.php` — bisa sekaligus ubah nama/email student dan nama/credits course terkait.
 - **Delete**: soft delete (`Enrollment` pakai trait `SoftDeletes`) — lihat bagian [Keputusan Desain](#keputusan-desain).
 - **Export CSV**: `app/Actions/Enrollments/ExportEnrollmentsCsv.php` — streaming response, tidak memuat seluruh dataset ke memori (lihat [Strategi Performa](#strategi-performa)).
@@ -52,7 +53,7 @@ app/
   Actions/Enrollments/     logika bisnis (Create, Update, ExportEnrollmentsCsv)
   Http/Controllers/        EnrollmentController — hanya penghubung
   Http/Requests/           validasi (StoreEnrollmentRequest, UpdateEnrollmentRequest)
-  Http/Resources/          bentuk JSON (EnrollmentResource)
+  Http/Resources/          bentuk JSON (EnrollmentResource, EnrollmentDetailResource)
   Http/Middleware/         LogRequests (request logging)
   Support/                 EnrollmentFilters (pagination, sort, filter, search)
   Models/                  Student, Course, Enrollment
@@ -61,7 +62,7 @@ database/migrations/       skema + index (termasuk trigram)
 lang/id/validation.php     pesan validasi Bahasa Indonesia
 resources/js/
   pages/enrollments/       halaman utama (Inertia)
-  components/enrollments/  tabel, toolbar, dialog form, filter lanjutan, pagination
+  components/enrollments/  tabel, toolbar, dialog form/detail, filter lanjutan, pagination
   components/ui/           komponen dasar shadcn/ui
   hooks/                   use-enrollment-table (state + fetch), debounce, tema
   lib/                     api.ts (fetch + CSRF), enrollment-validation.ts (validasi frontend)
@@ -288,7 +289,7 @@ Selain test bawaan starter kit (autentikasi, profile settings), ada test khusus 
 
 - **`CreateEnrollmentTest`**: insert ke 3 tabel saat student/course belum ada, memakai ulang record yang sudah ada, dan atomicity — transaksi rollback total (tidak ada student/course/enrollment yang tersimpan) kalau insert enrollment gagal di tengah jalan.
 - **`EnrollmentFiltersTest`**: live search lintas kolom, quick filter, advanced filter AND & OR, multi-column sort, dan `needsJoin()` (deteksi kapan query benar-benar perlu join, lihat [Strategi Performa](#strategi-performa)).
-- **`EnrollmentControllerTest`**: seluruh endpoint lewat HTTP — create dalam mode data baru dan sudah terdaftar (satu mahasiswa banyak KRS, NIM/kode MK duplikat ditolak), validasi 422, KRS duplikat, update, soft delete, pagination, export CSV, pengecualian CSRF yang tidak melebar ke rute lain, dan pesan yang jelas untuk kombinasi yang pernah dihapus.
+- **`EnrollmentControllerTest`**: seluruh endpoint lewat HTTP — create dalam mode data baru dan sudah terdaftar (satu mahasiswa banyak KRS, NIM/kode MK duplikat ditolak), validasi 422, KRS duplikat, update, soft delete, pagination, detail satu KRS (200 dan 404), export CSV, pengecualian CSRF yang tidak melebar ke rute lain, dan pesan yang jelas untuk kombinasi yang pernah dihapus.
 
 ## API / Routes
 
@@ -296,6 +297,7 @@ Selain test bawaan starter kit (autentikasi, profile settings), ada test khusus 
 |---|---|---|
 | GET | `/enrollments` | Halaman utama (Inertia) |
 | GET | `/enrollments/data` | JSON endpoint untuk tabel: pagination, sort, filter, search |
+| GET | `/enrollments/{id}` | Detail lengkap satu KRS: mahasiswa, mata kuliah, dan data KRS |
 | POST | `/enrollments` | Create (insert 3 tabel dalam 1 transaksi) |
 | PUT | `/enrollments/{id}` | Update |
 | DELETE | `/enrollments/{id}` | Soft delete |
@@ -337,6 +339,25 @@ Sertakan `Accept: application/json` supaya error validasi dikembalikan sebagai J
   "meta": { "page": 1, "page_size": 20, "total": 5003847, "last_page": 250193 }
 }
 ```
+
+**`GET /enrollments/{id}`** → `200` (`404` bila ID tidak ada, non-numerik, atau KRS sudah dihapus)
+
+```json
+{
+  "data": {
+    "id": 5015000,
+    "academic_year": "2025/2026",
+    "semester": "GANJIL",
+    "status": "APPROVED",
+    "created_at": "2026-09-20T10:26:23.000000Z",
+    "updated_at": "2026-09-20T10:26:23.000000Z",
+    "student": { "nim": "10068714", "name": "Citra Puspita", "email": "citra@kampus.ac.id" },
+    "course": { "code": "HK102", "name": "Course HK 102", "credits": 3 }
+  }
+}
+```
+
+Waktu dikirim dalam UTC (ISO 8601); frontend menampilkannya dalam WIB.
 
 **`POST /enrollments`** → `201`
 

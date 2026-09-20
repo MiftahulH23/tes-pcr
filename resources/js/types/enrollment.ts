@@ -13,6 +13,18 @@ export interface Enrollment {
     status: EnrollmentStatus;
 }
 
+/** Full record of one enrollment, returned by GET /enrollments/{id} (EnrollmentDetailResource). */
+export interface EnrollmentDetail {
+    id: number;
+    academic_year: string;
+    semester: Semester;
+    status: EnrollmentStatus;
+    created_at: string;
+    updated_at: string;
+    student: { nim: string; name: string; email: string };
+    course: { code: string; name: string; credits: number };
+}
+
 export interface PageMeta {
     page: number;
     page_size: number;

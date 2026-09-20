@@ -140,6 +140,15 @@
       }
     },
     {
+      "name": "Get enrollment detail (student + course + KRS)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/enrollments/{{enrollment_id}}", "host": ["{{base_url}}"], "path": ["enrollments", "{{enrollment_id}}"] },
+        "description": "Data lengkap satu KRS: mahasiswa (nim, name, email), mata kuliah (code, name, credits), dan KRS (id, academic_year, semester, status, created_at, updated_at). 404 bila ID tidak ada, non-numerik, atau KRS sudah dihapus."
+      }
+    },
+    {
       "name": "Update enrollment",
       "request": {
         "method": "PUT",

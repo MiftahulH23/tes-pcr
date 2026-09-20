@@ -276,6 +276,44 @@ class EnrollmentControllerTest extends TestCase
             ->assertJsonPath('meta.last_page', 2);
     }
 
+    public function test_show_returns_the_full_detail_of_one_enrollment()
+    {
+        $id = $this->createEnrollment();
+
+        $this->getJson("/enrollments/$id")
+            ->assertOk()
+            ->assertJsonPath('data.id', $id)
+            ->assertJsonPath('data.academic_year', '2025/2026')
+            ->assertJsonPath('data.semester', 'GANJIL')
+            ->assertJsonPath('data.status', 'DRAFT')
+            ->assertJsonPath('data.student.nim', '10000001')
+            ->assertJsonPath('data.student.name', 'Budi Santoso')
+            ->assertJsonPath('data.student.email', 'budi@example.com')
+            ->assertJsonPath('data.course.code', 'IF101')
+            ->assertJsonPath('data.course.name', 'Algoritma')
+            ->assertJsonPath('data.course.credits', 3)
+            ->assertJsonStructure(['data' => ['created_at', 'updated_at']]);
+    }
+
+    public function test_show_returns_404_for_an_unknown_deleted_or_malformed_id()
+    {
+        $this->getJson('/enrollments/999999')->assertNotFound();
+        $this->getJson('/enrollments/not-a-number')->assertNotFound();
+
+        $id = $this->createEnrollment();
+        $this->deleteJson("/enrollments/$id")->assertOk();
+
+        $this->getJson("/enrollments/$id")->assertNotFound();
+    }
+
+    public function test_the_show_route_does_not_shadow_the_data_and_export_routes()
+    {
+        Enrollment::factory()->create();
+
+        $this->getJson('/enrollments/data')->assertOk()->assertJsonStructure(['data', 'meta']);
+        $this->get('/enrollments/export')->assertOk()->streamedContent();
+    }
+
     public function test_export_streams_csv_for_the_active_filter_only()
     {
         $approved = Enrollment::factory()->create(['status' => 'APPROVED']);

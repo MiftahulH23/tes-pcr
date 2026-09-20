@@ -1,3 +1,4 @@
+import { SectionLabel } from '@/components/enrollments/section-label';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -5,11 +6,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { ApiError, apiFetch } from '@/lib/api';
 import { validateEnrollmentForm } from '@/lib/enrollment-validation';
 import type { Enrollment, EnrollmentStatus, Semester } from '@/types/enrollment';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface FormValues {
@@ -24,15 +24,6 @@ interface FormValues {
     status: EnrollmentStatus | '';
     student_existing: boolean;
     course_existing: boolean;
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-    return (
-        <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{children}</span>
-            <Separator className="flex-1" />
-        </div>
-    );
 }
 
 const EMPTY_FORM: FormValues = {

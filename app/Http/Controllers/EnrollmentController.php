@@ -7,6 +7,7 @@ use App\Actions\Enrollments\ExportEnrollmentsCsv;
 use App\Actions\Enrollments\UpdateEnrollment;
 use App\Http\Requests\StoreEnrollmentRequest;
 use App\Http\Requests\UpdateEnrollmentRequest;
+use App\Http\Resources\EnrollmentDetailResource;
 use App\Http\Resources\EnrollmentResource;
 use App\Models\Enrollment;
 use App\Support\EnrollmentFilters;
@@ -50,6 +51,11 @@ class EnrollmentController extends Controller
                 'last_page' => $pageSize > 0 ? (int) ceil($total / $pageSize) : 1,
             ],
         ]);
+    }
+
+    public function show(Enrollment $enrollment): EnrollmentDetailResource
+    {
+        return new EnrollmentDetailResource($enrollment->load(['student', 'course']));
     }
 
     public function store(StoreEnrollmentRequest $request, CreateEnrollment $action): JsonResponse

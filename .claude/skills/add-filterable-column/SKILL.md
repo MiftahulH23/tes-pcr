@@ -32,6 +32,8 @@ First decide the kind:
 9. **`components/enrollments/columns.ts`** — add to `ENROLLMENT_COLUMNS` (array order = display order) and `OPERATORS_BY_COLUMN` (typed `Record<FilterableColumn, …>`, so TypeScript fails until you add it). Offer only operators `applyOperator` supports: `contains`, `startsWith`, `equal`, `in`, `between`; enums only `equal`/`in`.
 10. **`components/enrollments/enrollment-table.tsx`** — header cells and `colSpan` derive from `ENROLLMENT_COLUMNS`, but the **body cells are hand-written**: add `<TableCell className="whitespace-nowrap">{row.x}</TableCell>` in the same position. A wider table may need a bigger `min-w-*` on `<Table>`; recheck phone, tablet, and desktop widths.
 
+11. **Row detail (if users should see it there).** Add the field to `EnrollmentDetailResource`, to `EnrollmentDetail` in `types/enrollment.ts`, and as a `<Field>` in `components/enrollments/enrollment-detail-dialog.tsx`; extend `test_show_returns_the_full_detail_of_one_enrollment`.
+
 ## If editable (kind C)
 
 `StoreEnrollmentRequest` / `UpdateEnrollmentRequest` rules + custom messages, attribute name in `lang/id/validation.php`, `CreateEnrollment` / `UpdateEnrollment` actions, the field and payload in `enrollment-form-dialog.tsx`, the matching rule in `lib/enrollment-validation.ts` (identical messages), and tests including a rollback case if the transaction changed.

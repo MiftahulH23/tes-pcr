@@ -13,7 +13,7 @@ Laravel 13 (PHP 8.4) · Inertia.js + React 19 + TypeScript · Vite · Tailwind C
 - `students`: `nim` (unique, 8–12 digits), `name` (3–100), `email` (unique). `courses`: `code` (unique, `[A-Z]{2,4}[0-9]{3}`), `name` (3–120), `credits` (1–6).
 - `enrollments` (the KRS): FKs `student_id` and `course_id`; `academic_year` `YYYY/YYYY` with the second year = first + 1; `semester` GANJIL|GENAP; `status` DRAFT|SUBMITTED|APPROVED|REJECTED (default DRAFT). Unique on (student, course, academic_year, semester). Soft-deleted.
 - **Create** works per entity in one of two modes (`student.existing` / `course.existing`, default false): *new data* requires an unused `nim`/`code` (a duplicate is a 422) and all fields; *existing* requires the `nim`/`code` to already exist and only uses it (typed name/email/credits are ignored) — that is how one student gets many enrollments. The form has a checkbox for each. Either way the enrollment is inserted with the student and course in one transaction. **Update** edits the enrollment plus optional student name/email and course name/credits. **Delete** is a soft delete and leaves students and courses alone.
-- **Table:** server-side pagination (`page`, `page_size` ≤ 200), multi-column sort, quick filters (status, semester), live search over NIM / student name / course code (400 ms debounce), one advanced-filter group with AND/OR (`contains`, `startsWith`, `equal`, `in`, `between`), and a streamed CSV export of everything matching the current filters.
+- **Table:** server-side pagination (`page`, `page_size` ≤ 200), multi-column sort, quick filters (status, semester), live search over NIM / student name / course code (400 ms debounce), one advanced-filter group with AND/OR (`contains`, `startsWith`, `equal`, `in`, `between`), a streamed CSV export of everything matching the current filters, and a per-row detail modal (eye icon → `GET /enrollments/{id}` → `EnrollmentDetailResource`) showing the full student, course, and enrollment data.
 - **Seeding:** `php artisan academic:seed-enrollments --fresh` builds the 5M rows (about 20–25 minutes).
 
 ## How the app is wired (non-obvious)
@@ -77,6 +77,7 @@ layouts/                 starter-kit layouts
 - **Form validation:** `StoreEnrollmentRequest` / `UpdateEnrollmentRequest` ⇄ `resources/js/lib/enrollment-validation.ts`, with identical messages. The backend is authoritative; the frontend only gives early feedback.
 - **Create modes (new vs existing student/course):** `StoreEnrollmentRequest` rules and messages ⇄ the two checkboxes and payload in `enrollment-form-dialog.tsx` ⇄ `student_existing`/`course_existing` in `lib/enrollment-validation.ts` ⇄ README "API / Routes" and "Keputusan Desain". The messages name the checkboxes, so keep the labels ("Mahasiswa sudah terdaftar", "Mata kuliah sudah ada") identical.
 - **Enum values:** `Enrollment::STATUSES` / `SEMESTERS` ⇄ the migration ⇄ `types/enrollment.ts`.
+- **Row detail:** `EnrollmentDetailResource` ⇄ `EnrollmentDetail` in `types/enrollment.ts` ⇄ `enrollment-detail-dialog.tsx` ⇄ README "API / Routes". A new student/course/enrollment field that users should see belongs here too. Timestamps arrive as UTC ISO strings and are shown in WIB by the dialog.
 - **Update semantics:** NIM and course code are immutable on edit (documented in README); student name/email and course name/credits are optional.
 
 ## Runbooks

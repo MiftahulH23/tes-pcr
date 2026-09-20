@@ -1,6 +1,7 @@
 import AppearanceToggleDropdown from '@/components/appearance-dropdown';
 import { AdvancedFilterDialog } from '@/components/enrollments/advanced-filter-dialog';
 import { ENROLLMENT_COLUMNS } from '@/components/enrollments/columns';
+import { EnrollmentDetailDialog } from '@/components/enrollments/enrollment-detail-dialog';
 import { EnrollmentFormDialog } from '@/components/enrollments/enrollment-form-dialog';
 import { EnrollmentPagination } from '@/components/enrollments/enrollment-pagination';
 import { EnrollmentTable } from '@/components/enrollments/enrollment-table';
@@ -25,6 +26,7 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
 
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<Enrollment | null>(null);
+    const [viewing, setViewing] = useState<Enrollment | null>(null);
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<Enrollment | null>(null);
     const [deleting, setDeleting] = useState(false);
@@ -112,6 +114,7 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
                     loading={table.loading}
                     sorts={table.sorts}
                     onToggleSort={table.toggleSort}
+                    onView={setViewing}
                     onEdit={openEdit}
                     onDelete={setPendingDelete}
                 />
@@ -127,6 +130,8 @@ export default function EnrollmentsIndex({ statuses, semesters }: EnrollmentsPag
                 semesters={semesters}
                 onSaved={table.refetch}
             />
+
+            <EnrollmentDetailDialog enrollment={viewing} onOpenChange={(open) => !open && setViewing(null)} />
 
             <AdvancedFilterDialog
                 open={advancedFilterOpen}
